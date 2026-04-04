@@ -1,0 +1,22 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+    .dark input:not([type='checkbox']):not([type='radio']),
+    .dark textarea,
+    .dark select {
+        @apply bg-slate-800 border-slate-600 text-slate-100 placeholder-slate-400;
+    }
+    
+    .dark input:focus:not([type='checkbox']):not([type='radio']),
+    .dark textarea:focus,
+    .dark select:focus {
+        @apply ring-blue-500 border-blue-500;
+    }
+    
+    .dark input[type='checkbox'],
+    .dark input[type='radio'] {
+        @apply border-slate-500 bg-slate-800;
+    }
+}

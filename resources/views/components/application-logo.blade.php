@@ -1,0 +1,2 @@
+<img src="{{ asset('img/repairservicelogoblue.png') }}" {{ $attributes->merge(['class' => 'block dark:hidden']) }} alt="101 Repair Service Logo">
+<img src="{{ asset('img/repairservicelogogray.png') }}" {{ $attributes->merge(['class' => 'hidden dark:block']) }} alt="101 Repair Service Logo">
