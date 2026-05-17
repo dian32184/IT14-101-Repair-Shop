@@ -21,6 +21,8 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 50%, #e0f2fe 100%);
+            background-attachment: fixed;
         }
 
         [x-cloak] {
@@ -32,6 +34,32 @@
         input[type="password"]::-ms-clear {
             display: none;
         }
+
+        .login-bg {
+            background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
+        }
+
+        .fade-in {
+            animation: fadeIn 0.8s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Subtle background pattern */
+        .bg-pattern::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: radial-gradient(circle at 25% 25%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
+                              radial-gradient(circle at 75% 75%, rgba(147, 197, 253, 0.05) 0%, transparent 50%);
+            pointer-events: none;
+        }
     </style>
 
     <script>
@@ -40,15 +68,15 @@
     </script>
 </head>
 
-<body class="font-sans antialiased text-gray-900 bg-gray-50 flex items-center justify-center min-h-screen p-4 sm:p-8 transition-colors duration-200">
+<body class="font-sans antialiased text-gray-900 flex items-center justify-center min-h-screen p-4 sm:p-8 transition-colors duration-200 bg-pattern">
 
     <div
-        class="w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px] transition-colors duration-200">
+        class="w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px] transition-colors duration-200 hover:shadow-3xl">
 
         <!-- Left Pane: Login Form -->
-        <div class="w-full md:w-1/2 p-8 sm:p-12 lg:p-16 flex flex-col justify-center bg-white relative transition-colors duration-200">
+        <div class="w-full md:w-1/2 p-8 sm:p-12 lg:p-16 flex flex-col justify-center login-bg relative transition-colors duration-200 fade-in">
 
-            <div class="max-w-md w-full mx-auto">
+            <div class="max-w-md w-full mx-auto fade-in">
                 <!-- Logo & Header -->
                 <div class="text-center mb-10">
                     <!-- Light Mode Logo (Blue) -->
@@ -70,9 +98,16 @@
                     <!-- Email Address -->
                     <div>
                         <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
-                        <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus
-                            class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 sm:text-sm placeholder-gray-400 transition-shadow"
-                            placeholder="Enter your email">
+                        <div class="relative">
+                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
+                                </svg>
+                            </div>
+                            <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus
+                                class="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 sm:text-sm placeholder-gray-400 transition-shadow"
+                                placeholder="Enter your email">
+                        </div>
                         <x-input-error :messages="$errors->get('email')"
                             class="mt-2 text-red-600 text-xs font-medium" />
                     </div>
@@ -125,7 +160,7 @@
                     <!-- Submit Button -->
                     <div class="pt-2">
                         <button type="submit"
-                            class="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-lg shadow-sm text-sm font-bold text-white bg-[#1a56db] hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 transition-colors">
+                            class="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-lg shadow-lg text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 transition-all duration-200 transform hover:scale-105">
                             Sign in
                         </button>
                     </div>
@@ -160,32 +195,20 @@
             </div>
 
             <!-- Content Container -->
-            <div class="absolute inset-0 flex flex-col justify-end p-12 text-white z-20">
-                <!-- Carousel Controls -->
-                <div class="flex items-center justify-between w-full">
-                    <div class="flex space-x-3">
-                        <button type="button" @click="activeSlide = activeSlide === 1 ? slides.length : activeSlide - 1"
-                            class="w-10 h-10 rounded-full border border-white/30 flex items-center justify-center hover:bg-white  transition-colors focus:outline-none">
-                            <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M15 19l-7-7 7-7"></path>
-                            </svg>
-                        </button>
-                        <button type="button" @click="activeSlide = activeSlide === slides.length ? 1 : activeSlide + 1"
-                            class="w-10 h-10 rounded-full border border-white/30 flex items-center justify-center hover:bg-white  transition-colors focus:outline-none">
-                            <svg class="h-5 w-5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7">
-                                </path>
-                            </svg>
-                        </button>
-                    </div>
+            <div class="absolute inset-0 flex flex-col justify-center p-12 text-white z-20">
+                <!-- Welcome Text -->
+                <div class="text-center mx-auto max-w-lg py-8">
+                    <h3 class="text-3xl font-bold mb-2">Welcome Back!</h3>
+                    <p class="text-white/90 text-lg">Sign in to manage your repair services efficiently.</p>
+                </div>
 
-                    <!-- Slide Indicators -->
+                <!-- Slide Indicators -->
+                <div class="mt-auto flex justify-center w-full pb-4">
                     <div class="flex space-x-2">
                         <template x-for="i in slides.length">
                             <button @click="activeSlide = i"
-                                class="h-1.5 rounded-full transition-all duration-300 focus:outline-none"
-                                :class="activeSlide === i ? 'w-6 bg-white ' : 'w-1.5 bg-white  hover:bg-white '"></button>
+                                class="h-2 rounded-full transition-all duration-300 focus:outline-none"
+                                :class="activeSlide === i ? 'w-8 bg-white' : 'w-2 bg-white/50 hover:bg-white/70'"></button>
                         </template>
                     </div>
                 </div>

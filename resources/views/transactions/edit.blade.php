@@ -1,9 +1,36 @@
 <x-app-layout>
-    <div class="w-full mx-auto space-y-6">
+    <div class="w-full mx-auto space-y-6" x-data="{
+        isDirty: false,
+        originalValues: {},
+        init() {
+            this.$nextTick(() => {
+                const form = this.$el.querySelector('form');
+                if (form) {
+                    const inputs = form.querySelectorAll('input, textarea, select');
+                    inputs.forEach(input => {
+                        this.originalValues[input.name] = input.value;
+                    });
+                }
+            });
+        },
+        checkDirty() {
+            const form = this.$el.querySelector('form');
+            if (form) {
+                const inputs = form.querySelectorAll('input, textarea, select');
+                this.isDirty = false;
+                inputs.forEach(input => {
+                    if (input.value !== this.originalValues[input.name]) {
+                        this.isDirty = true;
+                    }
+                });
+            }
+        }
+    }" @input="checkDirty()">
         <!-- Header -->
         <div class="flex items-center justify-between">
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Edit Transaction #{{ $transaction->id }}</h2>
             <a href="{{ route('transactions.index') }}"
+                @click="isDirty ? $dispatch('open-confirm', { title: 'Unsaved Changes', message: 'You have unsaved changes. Are you sure you want to leave?', confirmText: 'Leave', cancelText: 'Stay', variant: 'warning', action: () => window.location.href = '{{ route('transactions.index') }}' }) : window.location.href = '{{ route('transactions.index') }}'"
                 class="text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-white flex items-center transition-colors">
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -145,6 +172,7 @@
 
                     <div class="flex justify-end space-x-3 pt-6 border-t border-gray-100 dark:border-slate-700">
                         <a href="{{ route('transactions.index') }}"
+                            @click="isDirty ? $dispatch('open-confirm', { title: 'Unsaved Changes', message: 'You have unsaved changes. Are you sure you want to leave?', confirmText: 'Leave', cancelText: 'Stay', variant: 'warning', action: () => window.location.href = '{{ route('transactions.index') }}' }) : window.location.href = '{{ route('transactions.index') }}'"
                             class="px-4 py-2 border border-gray-300 dark:border-slate-500 rounded-lg text-sm font-medium text-gray-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                             Cancel
                         </a>

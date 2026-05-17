@@ -216,45 +216,24 @@
         </div>
         </div>
 
-        <!-- Additional Dashboard Information -->
-        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
-            <!-- Low Stock Parts -->
-            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex flex-col gap-4 hover:shadow-md transition-all duration-300">
-                <div class="flex items-center justify-between">
-                    <div>
-                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Low Stock Alerts</h3>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Inventory items needing restock</p>
-                    </div>
-                    @if(Route::has('parts.index'))
-                    <a href="{{ route('parts.index') }}" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">View Inventory</a>
-                    @endif
+        <!-- Parts Usage Analytics -->
+        <div class="bg-[#fafafa] dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-300 mt-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Most Used Parts</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Parts frequently used in services - helps with inventory planning</p>
                 </div>
-                <div class="overflow-x-auto">
-                    <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700/50">
-                        <thead>
-                            <tr>
-                                <th class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider py-2">Part Name</th>
-                                <th class="text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider py-2">Stock</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-gray-200 dark:divide-slate-700/50">
-                            @forelse($lowStockParts ?? collect() as $part)
-                            <tr>
-                                <td class="py-3 text-sm font-medium text-gray-900 dark:text-white">{{ $part->name }}</td>
-                                <td class="py-3 text-sm text-right text-red-600 font-bold">
-                                    {{ $part->quantity_stock }}
-                                </td>
-                            </tr>
-                            @empty
-                            <tr>
-                                <td colspan="2" class="py-4 text-center text-sm text-gray-500 dark:text-gray-400">Inventory levels are healthy.</td>
-                            </tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
+                @if(Route::has('inventory.index'))
+                <a href="{{ route('inventory.index') }}" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">View Inventory</a>
+                @endif
             </div>
+            <div class="h-[300px]">
+                <canvas id="partsUsageChart"></canvas>
+            </div>
+        </div>
 
+        <!-- Additional Dashboard Information -->
+        <div class="grid grid-cols-1 lg:grid-cols-1 gap-6 mt-6">
             <!-- Recent Transactions -->
             <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex flex-col gap-4 hover:shadow-md transition-all duration-300">
                 <div class="flex items-center justify-between">
@@ -406,6 +385,104 @@
                         }
                     }
                 });
+            }
+
+            // --- PARTS USAGE CHART ---
+            const ctxParts = document.getElementById('partsUsageChart');
+            if (ctxParts) {
+                const partsLabels = @json($partsUsageChartData['labels'] ?? []);
+                const partsData = @json($partsUsageChartData['data'] ?? []);
+                
+                if (partsLabels.length > 0) {
+                    new Chart(ctxParts, {
+                        type: 'bar',
+                        data: {
+                            labels: partsLabels,
+                            datasets: [{
+                                label: 'Quantity Used',
+                                data: partsData,
+                                backgroundColor: [
+                                    'rgba(249, 115, 22, 0.8)',
+                                    'rgba(34, 197, 94, 0.8)',
+                                    'rgba(59, 130, 246, 0.8)',
+                                    'rgba(168, 85, 247, 0.8)',
+                                    'rgba(236, 72, 153, 0.8)',
+                                    'rgba(234, 179, 8, 0.8)',
+                                    'rgba(20, 184, 166, 0.8)',
+                                    'rgba(239, 68, 68, 0.8)',
+                                    'rgba(99, 102, 241, 0.8)',
+                                    'rgba(107, 114, 128, 0.8)',
+                                ],
+                                borderColor: [
+                                    'rgb(249, 115, 22)',
+                                    'rgb(34, 197, 94)',
+                                    'rgb(59, 130, 246)',
+                                    'rgb(168, 85, 247)',
+                                    'rgb(236, 72, 153)',
+                                    'rgb(234, 179, 8)',
+                                    'rgb(20, 184, 166)',
+                                    'rgb(239, 68, 68)',
+                                    'rgb(99, 102, 241)',
+                                    'rgb(107, 114, 128)',
+                                ],
+                                borderWidth: 1,
+                                borderRadius: 4,
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                },
+                                tooltip: {
+                                    callbacks: {
+                                        label: function(context) {
+                                            return 'Quantity: ' + context.raw;
+                                        }
+                                    }
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    grid: {
+                                        color: 'rgba(0,0,0,0.04)'
+                                    },
+                                    ticks: {
+                                        font: {
+                                            size: 11
+                                        },
+                                        stepSize: 1
+                                    },
+                                    title: {
+                                        display: true,
+                                        text: 'Quantity Used',
+                                        font: {
+                                            size: 12,
+                                            weight: 'bold'
+                                        }
+                                    }
+                                },
+                                x: {
+                                    grid: {
+                                        display: false
+                                    },
+                                    ticks: {
+                                        font: {
+                                            size: 10
+                                        },
+                                        maxRotation: 45,
+                                        minRotation: 45
+                                    }
+                                }
+                            }
+                        }
+                    });
+                } else {
+                    ctxParts.parentElement.innerHTML = '<div class="flex items-center justify-center h-full text-gray-500 dark:text-gray-400">No parts usage data available yet.</div>';
+                }
             }
         });
     </script>

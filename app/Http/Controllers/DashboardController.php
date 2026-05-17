@@ -85,7 +85,7 @@ class DashboardController extends Controller
         arsort($serviceCounts);
         $topTypes = array_slice(array_keys($serviceCounts), 0, 3);
         if (empty($topTypes)) {
-            $topTypes = ['Installation', 'Maintenance', 'Repair']; 
+            $topTypes = ['Air Conditioner Repair', 'Refrigerator Repair', 'Washing Machine Repair']; 
         }
 
         $donutLabels = [];
@@ -123,6 +123,23 @@ class DashboardController extends Controller
             'lineDatasets' => $lineDatasets
         ];
 
+        // --- Parts Usage Analytics ---
+        $partsUsage = \DB::table('part_service_report')
+            ->join('parts', 'part_service_report.part_id', '=', 'parts.id')
+            ->select('parts.name', \DB::raw('SUM(part_service_report.quantity) as total_quantity'))
+            ->groupBy('parts.id', 'parts.name')
+            ->orderByDesc('total_quantity')
+            ->limit(10)
+            ->get();
+
+        $partsUsageLabels = $partsUsage->pluck('name')->toArray();
+        $partsUsageData = $partsUsage->pluck('total_quantity')->toArray();
+
+        $partsUsageChartData = [
+            'labels' => $partsUsageLabels,
+            'data' => $partsUsageData,
+        ];
+
         return view('dashboard', compact(
             'weeklyCustomers',
             'weeklyIncome',
@@ -134,7 +151,8 @@ class DashboardController extends Controller
             'incomeGrowth',
             'serviceGrowth',
             'overallGrowth',
-            'chartData'
+            'chartData',
+            'partsUsageChartData'
         ));
     }
 }
