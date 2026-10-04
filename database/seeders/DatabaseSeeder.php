@@ -51,6 +51,7 @@ class DatabaseSeeder extends Seeder
             TransactionSeeder::class,
             ServicePriceSeeder::class,
             TestUserSeeder::class,
+            ApplianceTypeSeeder::class,
         ]);
     }
 }

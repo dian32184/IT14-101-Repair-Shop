@@ -1,27 +1,56 @@
 <x-app-layout>
     <div class="w-full mx-auto space-y-6">
-        <!-- Header -->
-        <div class="flex items-center justify-between">
-            <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Transaction #{{ $transaction->id }}</h2>
-            <div class="flex space-x-3">
+        <div class="flex items-center justify-between flex-wrap gap-3">
+            <div>
+                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Transaction #{{ $transaction->id }}</h2>
+                @if($transaction->receipt_no)
+                    <p class="text-sm text-gray-500 dark:text-slate-400">Receipt {{ $transaction->receipt_no }}</p>
+                @endif
+            </div>
+            <div class="flex flex-wrap gap-2">
                 <a href="{{ route('transactions.index') }}"
-                    class="px-4 py-2 border border-gray-300 dark:border-slate-500 rounded-lg text-sm font-medium text-gray-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    class="px-4 py-2 border border-gray-300 dark:border-slate-500 rounded-lg text-sm font-medium text-gray-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/50 transition-colors">
                     Back to List
                 </a>
-                <a href="{{ route('transactions.edit', $transaction) }}"
-                    class="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 dark:blue-600 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
-                    Edit Transaction
+                <a href="{{ route('transactions.receipt', $transaction) }}" target="_blank"
+                    class="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-emerald-600 hover:bg-emerald-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-emerald-500 transition-colors">
+                    Print Receipt
                 </a>
+                @if(!$transaction->isLocked())
+                    <a href="{{ route('transactions.edit', $transaction) }}"
+                        class="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                        Edit Transaction
+                    </a>
+                @elseif($remaining > 0 && $transaction->report_id)
+                    <a href="{{ route('transactions.create', ['report_id' => $transaction->report_id]) }}"
+                        class="px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                        Add Payment
+                    </a>
+                @else
+                    <span class="px-4 py-2 rounded-lg text-sm font-medium text-gray-500 bg-gray-100 dark:bg-slate-700 dark:text-slate-300 border border-gray-200 dark:border-slate-600"
+                        title="Payments cannot be edited — add a new payment for remaining balance">
+                        Locked
+                    </span>
+                @endif
             </div>
         </div>
 
-        <!-- Details Card -->
+        @if(session('success'))
+            <div class="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-4 py-3 text-sm text-green-700 dark:text-green-300">
+                {{ session('success') }}
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-300">
+                {{ session('error') }}
+            </div>
+        @endif
+
         <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
             <div class="p-6">
-                <!-- Status Row -->
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
                     <div>
-                        <h3 class="text-sm font-medium text-gray-500 dark:text-slate-400">Date Computed</h3>
+                        <h3 class="text-sm font-medium text-gray-500 dark:text-slate-400">Date Recorded</h3>
                         <p class="mt-1 text-lg font-semibold text-gray-900 dark:text-white">
                             {{ $transaction->created_at->format('M d, Y g:i A') }}
                         </p>
@@ -36,15 +65,13 @@
                                 default => 'bg-gray-100 dark:bg-slate-700 text-gray-800 dark:text-slate-100 ring-gray-500/10',
                             };
                         @endphp
-                        <span
-                            class="mt-1 inline-flex items-center rounded-md px-3 py-1 text-sm font-medium ring-1 ring-inset {{ $statusClass }}">
+                        <span class="mt-1 inline-flex items-center rounded-md px-3 py-1 text-sm font-medium ring-1 ring-inset {{ $statusClass }}">
                             {{ $transaction->payment_status }}
                         </span>
                     </div>
                 </div>
 
-                <!-- Additional Payment Info -->
-                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8 mt-6">
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6 mb-8">
                     <div>
                         <h3 class="text-sm font-medium text-gray-500 dark:text-slate-400">Received By</h3>
                         <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $transaction->received_by ?? 'System' }}</p>
@@ -57,117 +84,118 @@
                         <h3 class="text-sm font-medium text-gray-500 dark:text-slate-400">Reference Number</h3>
                         <p class="mt-1 text-sm font-semibold text-gray-900 dark:text-white">{{ $transaction->reference_no ?? 'N/A' }}</p>
                     </div>
-                    @if($transaction->payment_status === 'Partial')
                     <div>
-                        <h3 class="text-sm font-medium text-gray-500 dark:text-slate-400">Partial Payment Amount</h3>
-                        <p class="mt-1 text-sm font-semibold text-yellow-600 dark:text-yellow-400">₱{{ number_format($transaction->partial_payment_amount, 2) }}</p>
+                        <h3 class="text-sm font-medium text-gray-500 dark:text-slate-400">Amount Paid (This Payment)</h3>
+                        <p class="mt-1 text-sm font-semibold text-emerald-600">₱{{ number_format($transaction->amountPaidThisPayment(), 2) }}</p>
                     </div>
-                    @endif
                 </div>
 
-                <hr class="border-gray-100 dark:border-slate-700 mb-8">
+                <div class="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+                    <div class="rounded-lg border border-gray-200 dark:border-slate-600 bg-gray-50 dark:bg-slate-700/40 p-4 text-center">
+                        <p class="text-xs uppercase text-gray-500 dark:text-slate-400">Bill Total</p>
+                        <p class="mt-1 text-xl font-bold text-gray-900 dark:text-white">₱{{ number_format($billTotal, 2) }}</p>
+                    </div>
+                    <div class="rounded-lg border border-green-200 dark:border-green-800 bg-green-50 dark:bg-green-900/20 p-4 text-center">
+                        <p class="text-xs uppercase text-green-700 dark:text-green-300">Total Paid</p>
+                        <p class="mt-1 text-xl font-bold text-green-700 dark:text-green-300">₱{{ number_format($alreadyPaid, 2) }}</p>
+                    </div>
+                    <div class="rounded-lg border {{ $remaining > 0 ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20' : 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20' }} p-4 text-center">
+                        <p class="text-xs uppercase {{ $remaining > 0 ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300' }}">
+                            {{ $remaining > 0 ? 'Remaining Balance' : 'Fully Paid' }}
+                        </p>
+                        <p class="mt-1 text-xl font-bold {{ $remaining > 0 ? 'text-red-700 dark:text-red-300' : 'text-green-700 dark:text-green-300' }}">
+                            ₱{{ number_format($remaining, 2) }}
+                        </p>
+                    </div>
+                </div>
 
-                <!-- Linked Service Report -->
+                @if($remaining > 0 && $transaction->report_id)
+                    <div class="mb-8">
+                        <a href="{{ route('transactions.create', ['report_id' => $transaction->report_id]) }}"
+                            class="inline-flex items-center px-4 py-2 rounded-lg text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors">
+                            + Add Another Payment
+                        </a>
+                    </div>
+                @endif
+
                 @if($transaction->report)
                     <div class="mb-8">
                         <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Linked Service Report</h3>
                         <div class="bg-gray-50 dark:bg-slate-700/50 rounded-lg p-4 border border-gray-200 dark:border-slate-600">
-                            <div class="flex items-center justify-between">
+                            <div class="flex items-center justify-between flex-wrap gap-3">
                                 <div>
                                     <p class="font-medium text-gray-900 dark:text-white">
-                                        {{ $transaction->report->customer->first_name ?? '' }}
-                                        {{ $transaction->report->customer->last_name ?? '' }}
+                                        {{ $transaction->report->customer_name }}
                                     </p>
                                     <p class="text-sm text-gray-500 dark:text-slate-400 mt-1">
-                                        {{ $transaction->report->appliance_name }}
-                                        ({{ $transaction->report->brand_model }})
+                                        Report #{{ $transaction->report->id }}
+                                        @if($transaction->report->appliance)
+                                            — {{ $transaction->report->appliance->product }}
+                                        @endif
                                     </p>
                                 </div>
                                 <a href="{{ route('services.show', $transaction->report) }}"
-                                    class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 flex items-center transition-colors shadow-sm bg-white dark:bg-slate-800 border border-gray-200 dark:border-slate-600 px-3 py-2 rounded-lg hover:bg-gray-50 dark:bg-slate-700/50">
-                                    <svg class="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                            d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z">
-                                        </path>
-                                    </svg>
-                                    View Report
+                                    class="text-sm font-medium text-blue-600 dark:text-blue-400 hover:underline">
+                                    View Service Report
                                 </a>
                             </div>
                         </div>
                     </div>
+
+                    @if($transaction->report->transactions->count() > 1)
+                        <div class="mb-8">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Payment History</h3>
+                            <div class="overflow-hidden rounded-lg border border-gray-200 dark:border-slate-600">
+                                <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-600">
+                                    <thead class="bg-gray-50 dark:bg-slate-700/50">
+                                        <tr>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-slate-400">Receipt</th>
+                                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-slate-400">Amount</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-slate-400">Status</th>
+                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-slate-400">Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody class="divide-y divide-gray-100 dark:divide-slate-700">
+                                        @foreach($transaction->report->transactions->sortBy('created_at') as $pay)
+                                            <tr class="{{ $pay->id === $transaction->id ? 'bg-blue-50/60 dark:bg-blue-900/20' : '' }}">
+                                                <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">
+                                                    <a href="{{ route('transactions.show', $pay) }}" class="hover:underline">
+                                                        {{ $pay->receipt_no ?? '#'.$pay->id }}
+                                                    </a>
+                                                </td>
+                                                <td class="px-4 py-2 text-sm text-right font-medium text-gray-900 dark:text-white">
+                                                    ₱{{ number_format($pay->amountPaidThisPayment(), 2) }}
+                                                </td>
+                                                <td class="px-4 py-2 text-sm text-gray-600 dark:text-slate-300">{{ $pay->payment_status }}</td>
+                                                <td class="px-4 py-2 text-sm text-gray-500 dark:text-slate-400">
+                                                    {{ $pay->payment_date ? $pay->payment_date->format('M d, Y') : $pay->created_at->format('M d, Y') }}
+                                                </td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    @endif
                 @endif
 
-                <!-- Total Amount Banner -->
-                <div class="bg-green-50 rounded-lg p-6 text-center border border-green-100 mb-8">
-                    <p class="text-sm font-medium text-green-800 uppercase tracking-wide">Total Amount Due</p>
-                    <h2 class="mt-2 text-4xl font-extrabold text-green-600">
-                        ₱{{ number_format($transaction->total_amount, 2) }}
-                    </h2>
-                    @if($transaction->payment_date)
-                        <p class="mt-2 text-sm text-green-700">
-                            Paid on: {{ \Carbon\Carbon::parse($transaction->payment_date)->format('M d, Y g:i A') }}
-                        </p>
-                    @endif
-                </div>
-
-                <!-- PayMongo Link Section -->
-                @if($transaction->payment_url && $transaction->payment_status !== 'Paid')
+                @if($transaction->payment_url && $transaction->payment_status !== 'Paid' && $remaining > 0)
                     <hr class="border-gray-100 dark:border-slate-700 mb-8">
                     <div class="max-w-xl mx-auto text-center" x-data="{ copied: false }">
-                        <div class="inline-flex items-center justify-center p-3 bg-blue-50 rounded-full mb-4">
-                            <svg class="w-6 h-6 text-blue-600 dark:text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                    d="M13.828 10.172a4 4 0 00-5.656 0l-4 4a4 4 0 105.656 5.656l1.102-1.101m-.758-4.899a4 4 0 005.656 0l4-4a4 4 0 00-5.656-5.656l-1.1 1.1">
-                                </path>
-                            </svg>
-                        </div>
                         <h3 class="text-lg font-medium text-gray-900 dark:text-white">PayMongo Payment Link</h3>
                         <p class="mt-2 text-sm text-gray-500 dark:text-slate-400 mb-4">
-                            Send this link to the customer so they can securely pay online.
+                            Send this link for the remaining balance.
                         </p>
-
                         <div class="flex shadow-sm rounded-md">
-                            <div class="relative flex-grow focus-within:z-10">
-                                <input type="text" id="payment_url" readonly value="{{ $transaction->payment_url }}"
-                                    class="block w-full rounded-none rounded-l-md border-gray-300 bg-gray-50 dark:bg-slate-700/50 text-gray-500 dark:text-slate-400 focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                            </div>
-                            <button type="button" @click="
-                                        navigator.clipboard.writeText(document.getElementById('payment_url').value); 
-                                        copied = true; 
-                                        setTimeout(() => copied = false, 2000);
-                                    "
-                                class="relative -ml-px justify-center inline-flex items-center space-x-2 border border-gray-300 bg-gray-50 dark:bg-slate-700/50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 dark:bg-slate-700 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors w-32">
-                                <template x-if="!copied">
-                                    <span class="flex items-center">
-                                        <svg class="mr-2 h-4 w-4 text-gray-400" fill="none" stroke="currentColor"
-                                            viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3">
-                                            </path>
-                                        </svg>
-                                        Copy Link
-                                    </span>
-                                </template>
-                                <template x-if="copied">
-                                    <span class="flex items-center text-green-600">
-                                        <svg class="mr-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                d="M5 13l4 4L19 7"></path>
-                                        </svg>
-                                        Copied!
-                                    </span>
-                                </template>
+                            <input type="text" id="payment_url" readonly value="{{ $transaction->payment_url }}"
+                                class="block w-full rounded-l-md border-gray-300 bg-gray-50 dark:bg-slate-700/50 text-gray-500 sm:text-sm">
+                            <button type="button" @click="navigator.clipboard.writeText(document.getElementById('payment_url').value); copied = true; setTimeout(() => copied = false, 2000);"
+                                class="relative -ml-px inline-flex items-center border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 w-32 justify-center">
+                                <span x-text="copied ? 'Copied!' : 'Copy Link'"></span>
                             </button>
                             <a href="{{ $transaction->payment_url }}" target="_blank"
-                                class="relative -ml-px inline-flex items-center rounded-r-md border border-gray-300 dark:border-slate-500 bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 dark:blue-600 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 transition-colors">
+                                class="relative -ml-px inline-flex items-center rounded-r-md border border-gray-300 bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
                                 Open
-                                <svg class="ml-2 h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                        d="M10 6H6a2 2 0 00-2 2v10a2 2 0 002 2h10a2 2 0 002-2v-4M14 4h6m0 0v6m0-6L10 14">
-                                    </path>
-                                </svg>
                             </a>
                         </div>
                     </div>

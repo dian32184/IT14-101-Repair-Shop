@@ -33,6 +33,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/services/{service}/print', [ServiceReportController::class , 'print'])->name('services.print');
 
     Route::resource('inventory', InventoryController::class);
+    Route::get('/transactions/{transaction}/receipt', [TransactionController::class, 'receipt'])->name('transactions.receipt');
     Route::resource('transactions', TransactionController::class);
 
     Route::middleware(['can:admin-only'])->group(function () {

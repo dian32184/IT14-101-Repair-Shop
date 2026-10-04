@@ -1,15 +1,62 @@
 <x-app-layout>
+    @php
+        $catalogPrices = ($servicePrices ?? collect())->values();
+        $catalogNames = $catalogPrices->pluck('service_name')->all();
+        $oldTypes = old('service_types', $service->details?->service_types ?? []) ?: [];
+        if (!is_array($oldTypes)) {
+            $oldTypes = [];
+        }
+        $oldCustom = old('custom_services', $service->details?->custom_services ?? []) ?: [];
+        if (!is_array($oldCustom)) {
+            $oldCustom = [];
+        }
+        // Normalize custom rows
+        $oldCustom = collect($oldCustom)
+            ->filter(fn ($row) => filled(is_array($row) ? ($row['name'] ?? null) : $row))
+            ->map(function ($row) {
+                if (!is_array($row)) {
+                    return ['name' => (string) $row, 'price' => 0];
+                }
+                return [
+                    'name' => trim((string) ($row['name'] ?? '')),
+                    'price' => (float) ($row['price'] ?? 0),
+                ];
+            })
+            ->values()
+            ->all();
+
+        $customNames = collect($oldCustom)->pluck('name')->all();
+        // Recover legacy custom names saved only in service_types
+        foreach ($oldTypes as $typeName) {
+            $typeName = trim((string) $typeName);
+            if ($typeName === '') {
+                continue;
+            }
+            if (!in_array($typeName, $catalogNames, true) && !in_array($typeName, $customNames, true)) {
+                $oldCustom[] = ['name' => $typeName, 'price' => 0];
+                $customNames[] = $typeName;
+            }
+        }
+
+        $checkedCatalog = array_values(array_filter($oldTypes, fn ($t) => in_array($t, $catalogNames, true)));
+    @endphp
     <div class="w-full mx-auto space-y-6" x-data="{
         customers: {{ Js::from($customers) }},
         parts: {{ Js::from($parts) }},
-        servicePrices: {{ Js::from($servicePrices ?? \App\Models\ServicePrice::all()) }},
+        servicePrices: {{ Js::from($catalogPrices) }},
         selectedCustomerId: '{{ old('customer_id', $service->customer_id) }}',
         selectedApplianceId: '{{ old('appliance_id', $service->appliance_id) }}',
         selectedParts: [],
         selectedPartId: '',
         partQuantity: 1,
         miscCost: {{ old('miscellaneous_cost', $service->details?->miscellaneous_cost ?? 0) }},
-        checkedTypes: {{ Js::from(old('service_types', $service->details?->service_types ?? [])) }},
+        checkedTypes: {{ Js::from($checkedCatalog) }},
+        customServices: {{ Js::from(array_values($oldCustom)) }},
+        serviceSearch: '',
+        showServiceList: false,
+        showCustomForm: false,
+        customName: '',
+        customPrice: '',
         techniciansList: {{ Js::from($technicians) }},
         searchTech: '',
         filterTech: '',
@@ -28,21 +75,97 @@
                 return total + (part.price * part.quantity);
             }, 0);
         },
+        get uniqueServicePrices() {
+            const seen = new Set();
+            return this.servicePrices.filter(sp => {
+                if (seen.has(sp.service_name)) return false;
+                seen.add(sp.service_name);
+                return true;
+            });
+        },
+        get filteredServicePrices() {
+            const q = (this.serviceSearch || '').toLowerCase().trim();
+            return this.uniqueServicePrices.filter(sp => {
+                if (this.checkedTypes.includes(sp.service_name)) return false;
+                if (!q) return true;
+                return sp.service_name.toLowerCase().includes(q);
+            });
+        },
+        get selectedServiceChips() {
+            const chips = [];
+            this.uniqueServicePrices.forEach(sp => {
+                if (this.checkedTypes.includes(sp.service_name)) {
+                    chips.push({ key: 'c:' + sp.service_name, kind: 'catalog', name: sp.service_name, price: parseFloat(sp.service_price) });
+                }
+            });
+            this.customServices.forEach((cs, i) => {
+                chips.push({ key: 'x:' + i, kind: 'custom', index: i, name: cs.name, price: parseFloat(cs.price) || 0 });
+            });
+            return chips;
+        },
         get computedLabor() {
             let base = 0;
-            this.servicePrices.forEach(sp => {
+            this.uniqueServicePrices.forEach(sp => {
                 if (this.checkedTypes.includes(sp.service_name)) {
-                    base += parseFloat(sp.service_price);
+                    base += parseFloat(sp.service_price) || 0;
                 }
+            });
+            this.customServices.forEach(cs => {
+                base += parseFloat(cs.price) || 0;
             });
             return base;
         },
-        toggleServiceType(name) {
+        addServiceType(name) {
+            if (!name || this.checkedTypes.includes(name)) return;
+            this.checkedTypes.push(name);
+            this.serviceSearch = '';
+            this.showServiceList = false;
+        },
+        removeServiceType(name) {
             const idx = this.checkedTypes.indexOf(name);
-            if (idx === -1) {
-                this.checkedTypes.push(name);
-            } else {
-                this.checkedTypes.splice(idx, 1);
+            if (idx !== -1) this.checkedTypes.splice(idx, 1);
+        },
+        toggleServiceType(name) {
+            if (this.checkedTypes.includes(name)) this.removeServiceType(name);
+            else this.addServiceType(name);
+        },
+        addCustomService() {
+            const name = (this.customName || '').trim();
+            const price = parseFloat(this.customPrice);
+            if (!name) {
+                alert('Enter a custom service name.');
+                return;
+            }
+            if (isNaN(price) || price < 0) {
+                alert('Enter a valid price.');
+                return;
+            }
+            const existsCatalog = this.uniqueServicePrices.some(sp => sp.service_name.toLowerCase() === name.toLowerCase());
+            if (existsCatalog) {
+                alert('That service already exists in the list. Select it from search instead.');
+                return;
+            }
+            const existsCustom = this.customServices.some(cs => (cs.name || '').toLowerCase() === name.toLowerCase());
+            if (existsCustom) {
+                alert('That custom service is already added.');
+                return;
+            }
+            this.customServices.push({ name, price });
+            this.customName = '';
+            this.customPrice = '';
+            this.showCustomForm = false;
+            this.serviceSearch = '';
+        },
+        removeCustomService(index) {
+            this.customServices.splice(index, 1);
+        },
+        onServiceSearchEnter() {
+            if (this.filteredServicePrices.length === 1) {
+                this.addServiceType(this.filteredServicePrices[0].service_name);
+            } else if (this.serviceSearch.trim() && this.filteredServicePrices.length === 0) {
+                this.customName = this.serviceSearch.trim();
+                this.showCustomForm = true;
+                this.showServiceList = false;
             }
         },
         get filteredTechnicians() {
@@ -351,26 +474,160 @@
                             @enderror
                         </div>
 
-                        <!-- Service Types (connected to Service Prices) -->
+                        <!-- Service Types (search + chips + custom) -->
                         <div class="md:col-span-2 mt-2">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">Service Types <span class="text-red-500">*</span></label>
-                            <p class="text-xs text-gray-500 dark:text-slate-400 mb-2">Checking a service type adds its configured price to the labor cost.</p>
-                            <div class="flex flex-wrap gap-4">
-                                @foreach($servicePrices as $sp)
-                                <label class="inline-flex items-center cursor-pointer select-none">
-                                    <input type="checkbox" name="service_types[]" value="{{ $sp->service_name }}" {{ $techDisabled }}
-                                        class="rounded border-gray-300 dark:border-slate-500 text-blue-600 dark:text-blue-400 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 disabled:bg-gray-100 dark:bg-slate-700 disabled:cursor-not-allowed"
-                                        {{ in_array($sp->service_name, old('service_types', $savedServiceTypes)) ? 'checked' : '' }}
-                                        @change="toggleServiceType('{{ $sp->service_name }}')">
-                                    <span class="ml-2 text-sm text-gray-700 dark:text-slate-200">{{ $sp->service_name }}</span>
-                                    <span class="ml-1 text-xs text-green-700 font-medium">(+₱{{ number_format($sp->service_price, 2) }})</span>
-                                </label>
-                                @endforeach
-                                @if($servicePrices->isEmpty())
-                                <p class="text-sm text-gray-400 italic">No service prices configured. <a href="{{ route('prices.create') }}" class="text-blue-600 dark:text-blue-400 underline">Add service prices</a>.</p>
-                                @endif
+                            <div class="flex flex-col sm:flex-row sm:items-end sm:justify-between gap-1 mb-2">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-200">Service Types <span class="text-red-500">*</span></label>
+                                    <p class="text-xs text-gray-500 dark:text-slate-400 mt-0.5">Search to add services, or create a custom one if it’s not listed. Technicians only.</p>
+                                </div>
+                                <p class="text-sm font-semibold text-gray-900 dark:text-white tabular-nums"
+                                    x-show="selectedServiceChips.length > 0"
+                                    x-cloak>
+                                    Labor
+                                    <span class="text-blue-700 dark:text-blue-400" x-text="'₱' + Number(computedLabor).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></span>
+                                </p>
                             </div>
+
+                            {{-- Hidden fields for submit --}}
+                            <template x-for="name in checkedTypes" :key="'st-' + name">
+                                <input type="hidden" name="service_types[]" :value="name">
+                            </template>
+                            <template x-for="(cs, i) in customServices" :key="'cs-' + i">
+                                <div>
+                                    <input type="hidden" :name="'custom_services[' + i + '][name]'" :value="cs.name">
+                                    <input type="hidden" :name="'custom_services[' + i + '][price]'" :value="cs.price">
+                                </div>
+                            </template>
+                            <input type="hidden" name="labor_cost" :value="computedLabor">
+
+                            <div class="rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800/60 shadow-sm overflow-visible {{ $secDisabled ? 'opacity-70 pointer-events-none' : '' }}">
+                                {{-- Selected chips --}}
+                                <div class="px-4 pt-4 pb-3 border-b border-gray-100 dark:border-slate-700/80">
+                                    <div class="flex items-center justify-between mb-2">
+                                        <span class="text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500">Selected</span>
+                                        <span class="text-[11px] text-gray-400 dark:text-slate-500" x-text="selectedServiceChips.length + (selectedServiceChips.length === 1 ? ' service' : ' services')"></span>
+                                    </div>
+                                    <template x-if="selectedServiceChips.length === 0">
+                                        <p class="text-sm text-gray-400 dark:text-slate-500 py-1">Nothing selected — search below to add a service.</p>
+                                    </template>
+                                    <div class="flex flex-wrap gap-2" x-show="selectedServiceChips.length > 0">
+                                        <template x-for="chip in selectedServiceChips" :key="chip.key">
+                                            <span class="inline-flex items-center gap-1.5 max-w-full rounded-lg pl-2.5 pr-1 py-1 text-xs font-medium border"
+                                                :class="chip.kind === 'custom'
+                                                    ? 'bg-violet-50 text-violet-900 border-violet-200 dark:bg-violet-900/30 dark:text-violet-100 dark:border-violet-700/60'
+                                                    : 'bg-sky-50 text-sky-900 border-sky-200 dark:bg-sky-900/30 dark:text-sky-100 dark:border-sky-700/60'">
+                                                <span class="truncate" x-text="chip.name"></span>
+                                                <span class="opacity-70 whitespace-nowrap tabular-nums" x-text="'₱' + Number(chip.price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></span>
+                                                @if(!$secDisabled)
+                                                <button type="button"
+                                                    @click="chip.kind === 'custom' ? removeCustomService(chip.index) : removeServiceType(chip.name)"
+                                                    class="ml-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-md hover:bg-black/10 dark:hover:bg-white/10 focus:outline-none"
+                                                    title="Remove">
+                                                    <svg class="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                                                </button>
+                                                @endif
+                                            </span>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                {{-- Search --}}
+                                <div class="px-4 py-3 relative" @click.outside="showServiceList = false">
+                                    <label class="block text-[11px] font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500 mb-1.5">Find a service</label>
+                                    <div class="relative">
+                                        <div class="pointer inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                            <svg class="h-4 w-4 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+                                        </div>
+                                        <input type="text" x-model="serviceSearch" {{ $secDisabled }}
+                                            @focus="showServiceList = true"
+                                            @input="showServiceList = true"
+                                            @keydown.escape="showServiceList = false"
+                                            @keydown.enter.prevent="onServiceSearchEnter()"
+                                            placeholder="Type to search (e.g. refrigerator)…"
+                                            autocomplete="off"
+                                            class="block w-full pl-9 pr-3 py-2.5 text-sm rounded-lg border-gray-300 dark:border-slate-500 bg-gray-50 dark:bg-slate-700/50 focus:ring-blue-500 focus:border-blue-500 disabled:cursor-not-allowed">
+                                    </div>
+
+                                    <div x-show="showServiceList" x-cloak
+                                        class="absolute z-30 left-4 right-4 mt-1.5 max-h-56 overflow-y-auto rounded-xl border border-gray-200 dark:border-slate-600 bg-white dark:bg-slate-800 shadow-xl">
+                                        <template x-if="filteredServicePrices.length === 0">
+                                            <div class="px-3 py-3 text-sm text-gray-500 dark:text-slate-400 space-y-2">
+                                                <p x-show="serviceSearch.trim()">No match for “<span class="font-medium text-gray-700 dark:text-slate-200" x-text="serviceSearch.trim()"></span>”.</p>
+                                                <p x-show="!serviceSearch.trim()">All catalog services are already selected.</p>
+                                                <button type="button" x-show="serviceSearch.trim()"
+                                                    @click="customName = serviceSearch.trim(); showCustomForm = true; showServiceList = false"
+                                                    class="text-sm font-medium text-violet-700 dark:text-violet-300 hover:underline">
+                                                    Add as custom service →
+                                                </button>
+                                            </div>
+                                        </template>
+                                        <template x-for="sp in filteredServicePrices" :key="sp.id || sp.service_name">
+                                            <button type="button"
+                                                @click="addServiceType(sp.service_name)"
+                                                class="w-full flex items-center justify-between gap-3 px-3 py-2.5 text-left text-sm hover:bg-sky-50 dark:hover:bg-slate-700/80 border-b border-gray-100 dark:border-slate-700 last:border-0 transition-colors">
+                                                <span class="font-medium text-gray-800 dark:text-slate-100" x-text="sp.service_name"></span>
+                                                <span class="text-xs font-semibold text-emerald-700 dark:text-emerald-400 whitespace-nowrap tabular-nums"
+                                                    x-text="'+₱' + Number(sp.service_price).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"></span>
+                                            </button>
+                                        </template>
+                                    </div>
+                                </div>
+
+                                {{-- Custom service --}}
+                                <div class="border-t border-gray-100 dark:border-slate-700 bg-slate-50/90 dark:bg-slate-900/40 px-4 py-3">
+                                    <button type="button" {{ $secDisabled }}
+                                        @click="showCustomForm = !showCustomForm"
+                                        class="inline-flex items-center text-sm font-medium text-violet-700 dark:text-violet-300 hover:text-violet-900 dark:hover:text-violet-200">
+                                        <svg class="w-4 h-4 mr-1.5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"/></svg>
+                                        <span x-text="showCustomForm ? 'Hide custom service' : 'Not in the list? Add a custom service'"></span>
+                                    </button>
+
+                                    <div x-show="showCustomForm" x-cloak x-transition class="mt-3 rounded-lg border border-violet-200 dark:border-violet-800/50 bg-white dark:bg-slate-800 p-3">
+                                        <p class="text-xs text-gray-500 dark:text-slate-400 mb-3">For one-off jobs that aren’t in Service Prices. Name + price are added to labor for this report only.</p>
+                                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                                            <div class="sm:col-span-2">
+                                                <label class="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">Service name</label>
+                                                <input type="text" x-model="customName" {{ $secDisabled }}
+                                                    @keydown.enter.prevent="addCustomService()"
+                                                    placeholder="e.g. Ice maker repair"
+                                                    class="block w-full text-sm rounded-lg border-gray-300 dark:border-slate-500 bg-white dark:bg-slate-800 focus:ring-violet-500 focus:border-violet-500">
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-600 dark:text-slate-300 mb-1">Price (₱)</label>
+                                                <input type="number" step="0.01" min="0" x-model="customPrice" {{ $secDisabled }}
+                                                    @keydown.enter.prevent="addCustomService()"
+                                                    placeholder="0.00"
+                                                    class="block w-full text-sm rounded-lg border-gray-300 dark:border-slate-500 bg-white dark:bg-slate-800 focus:ring-violet-500 focus:border-violet-500">
+                                            </div>
+                                            <div class="sm:col-span-3 flex justify-end gap-2">
+                                                <button type="button" {{ $secDisabled }} @click="showCustomForm = false; customName = ''; customPrice = ''"
+                                                    class="px-3 py-2 rounded-lg text-sm font-medium text-gray-600 dark:text-slate-300 hover:bg-gray-100 dark:hover:bg-slate-700">
+                                                    Cancel
+                                                </button>
+                                                <button type="button" {{ $secDisabled }} @click="addCustomService()"
+                                                    class="inline-flex items-center px-3 py-2 rounded-lg text-sm font-medium text-white bg-violet-600 hover:bg-violet-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-violet-500">
+                                                    Add to labor
+                                                </button>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+
+                            @if($catalogPrices->isEmpty())
+                                <p class="mt-2 text-sm text-gray-400 italic">No service prices configured. <a href="{{ route('prices.create') }}" class="text-blue-600 dark:text-blue-400 underline">Add service prices</a> or use a custom service above.</p>
+                            @endif
                             @error('service_types')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                            @error('custom_services')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                            @error('custom_services.*.name')
+                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                            @error('custom_services.*.price')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
@@ -384,6 +641,21 @@
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
+
+                        @if($service->appliance && $service->appliance->problems && $service->appliance->problems->count() > 0)
+                            <div class="md:col-span-2">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-slate-200">Appliance Reported Problems</label>
+                                <div class="mt-1 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg border border-gray-100 dark:border-slate-700">
+                                    @foreach($service->appliance->problems as $problem)
+                                        @if($problem->common_problem)
+                                            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded mr-1 mb-1">{{ $problem->common_problem->problem_name }}</span>
+                                        @elseif($problem->other_problem)
+                                            <span class="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded mr-1 mb-1">Other: {{ $problem->other_problem }}</span>
+                                        @endif
+                                    @endforeach
+                                </div>
+                            </div>
+                        @endif
 
                         <!-- Findings -->
                         <div class="md:col-span-2">
@@ -516,7 +788,7 @@
                             <div class="flex items-end gap-3 mb-4">
                                 <div class="flex-1">
                                     <label class="block text-xs font-medium text-gray-700 dark:text-slate-200">Select Part</label>
-                                    <select x-model="selectedPartId" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                    <select x-model="selectedPartId" {{ $secDisabled }} class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 dark:bg-slate-700 disabled:cursor-not-allowed">
                                         <option value="">-- Choose Part --</option>
                                         <template x-for="part in parts" :key="part.id">
                                             <option :value="part.id" x-text="part.part_no + ' - ' + part.name + ' (₱' + part.price + ') - Stock: ' + part.quantity_stock"></option>
@@ -525,9 +797,9 @@
                                 </div>
                                 <div class="w-24">
                                     <label class="block text-xs font-medium text-gray-700 dark:text-slate-200">Qty</label>
-                                    <input type="number" x-model="partQuantity" min="1" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                    <input type="number" x-model="partQuantity" min="1" {{ $secDisabled }} class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 dark:bg-slate-700 disabled:cursor-not-allowed">
                                 </div>
-                                <button type="button" @click="addPart" class="mb-px px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900">
+                                <button type="button" @click="addPart" {{ $secDisabled }} class="mb-px px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 disabled:opacity-50 disabled:cursor-not-allowed">
                                     Add Part
                                 </button>
                             </div>
@@ -553,14 +825,14 @@
                                                 <td class="px-4 py-2 text-sm text-gray-900 dark:text-white" x-text="part.name"></td>
                                                 <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-white" x-text="'₱' + part.price.toFixed(2)"></td>
                                                 <td class="px-4 py-2 text-sm text-center text-gray-900 dark:text-white">
-                                                    <input type="number" x-model.number="part.quantity" min="1" class="w-16 p-1 text-center text-sm border-gray-300 dark:border-slate-500 rounded" @change="$dispatch('input')">
+                                                    <input type="number" x-model.number="part.quantity" min="1" {{ $secDisabled }} class="w-16 p-1 text-center text-sm border-gray-300 dark:border-slate-500 rounded disabled:bg-gray-100 dark:bg-slate-700 disabled:cursor-not-allowed" @change="$dispatch('input')">
                                                 </td>
                                                 <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-white" x-text="'₱' + (part.is_not_working ? '0.00' : (part.price * part.quantity).toFixed(2))"></td>
                                                 <td class="px-4 py-2 text-sm text-center text-gray-900 dark:text-white">
-                                                    <input type="checkbox" x-model="part.is_not_working" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                                                    <input type="checkbox" x-model="part.is_not_working" {{ $secDisabled }} class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50 disabled:cursor-not-allowed">
                                                 </td>
                                                 <td class="px-4 py-2 text-sm text-center">
-                                                    <button type="button" @click="removePart(part.id)" class="text-red-500 hover:text-red-700">
+                                                    <button type="button" @click="removePart(part.id)" {{ $secDisabled }} class="text-red-500 hover:text-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
                                                         <svg class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
                                                         </svg>
@@ -616,23 +888,18 @@
 
                         <!-- Labor Cost (auto-computed from service types) -->
                         <div>
-                            <label for="labor_cost" class="block text-sm font-medium text-gray-700 dark:text-slate-200">
+                            <label for="labor_cost_display" class="block text-sm font-medium text-gray-700 dark:text-slate-200">
                                 Labor Cost <span class="text-red-500">*</span>
                             </label>
                             <div class="mt-1 relative rounded-md shadow-sm">
                                 <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
                                     <span class="text-gray-500 dark:text-slate-400 sm:text-sm">₱</span>
                                 </div>
-                                <input type="number" name="labor_cost" id="labor_cost" step="0.01" min="0" {{ $techDisabled }}
-                                    :value="computedLabor"
-                                    x-bind:value="computedLabor"
-                                    class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-7 sm:text-sm border-gray-300 dark:border-slate-500 rounded-lg disabled:bg-gray-100 dark:bg-slate-700 disabled:cursor-not-allowed bg-gray-50 dark:bg-slate-700/50"
-                                    readonly>
+                                <input type="text" id="labor_cost_display" readonly
+                                    :value="Number(computedLabor).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})"
+                                    class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-7 sm:text-sm border-gray-300 dark:border-slate-500 rounded-lg cursor-default bg-gray-50 dark:bg-slate-700/50">
                             </div>
-                            <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">Calculated from selected service types.</p>
-                            @error('labor_cost')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
+                            <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">Auto-calculated from selected + custom services.</p>
                         </div>
                     </div>
 

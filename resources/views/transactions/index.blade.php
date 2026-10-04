@@ -11,12 +11,12 @@
         <!-- Header -->
         <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 print:hidden">
             <div>
-                <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Transactions</h2>
+                <h2 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Transactions</h2>
                 <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">View and manage financial transactions</p>
             </div>
             <div class="flex space-x-3">
                 <button onclick="window.print()"
-                    class="inline-flex items-center px-4 py-2 border border-gray-300 dark:border-slate-500 rounded-lg shadow-sm text-sm font-medium text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                    class="btn-secondary">
                     <svg class="w-5 h-5 mr-2 -ml-1 text-gray-500 dark:text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                             d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
@@ -24,20 +24,31 @@
                     </svg>
                     Print List
                 </button>
-                @if(in_array(auth()->user()->role, ['Administrator', 'Secretary']))
+                @if(in_array(auth()->user()->role, ['Administrator', 'Cashier']))
                     <a href="{{ route('transactions.create') }}"
-                        class="inline-flex items-center px-4 py-2 border border-transparent rounded-lg shadow-sm text-sm font-medium text-white bg-blue-700 hover:bg-blue-800 dark:bg-blue-900 dark:hover:bg-blue-800 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
+                        class="btn-primary">
                         <svg class="w-5 h-5 mr-2 -ml-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
                         </svg>
-                        New Transaction
+                        Add Payment
                     </a>
                 @endif
             </div>
         </div>
 
+        @if(session('success'))
+            <div class="rounded-lg bg-green-50 dark:bg-green-900/20 border border-green-200 dark:border-green-800 px-4 py-3 text-sm text-green-700 dark:text-green-300 print:hidden">
+                {{ session('success') }}
+            </div>
+        @endif
+        @if(session('error'))
+            <div class="rounded-lg bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 px-4 py-3 text-sm text-red-700 dark:text-red-300 print:hidden">
+                {{ session('error') }}
+            </div>
+        @endif
+
         <!-- Filters & Search (Always Visible) -->
-        <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm print:hidden">
+        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-card print:hidden">
             <form method="GET" action="{{ route('transactions.index') }}" class="flex flex-col md:flex-row gap-4" id="filterForm">
                 
                 <!-- Search -->
@@ -107,7 +118,7 @@
 
             <!-- Table -->
             <div
-                class="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden print:shadow-none print:border-none print:rounded-none">
+                class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-card overflow-hidden print:shadow-none print:border-none print:rounded-none">
                 <div class="overflow-x-auto print:overflow-visible">
                     <table class="min-w-full divide-y divide-gray-200 print:w-full">
                         <thead class="bg-gray-50 dark:bg-slate-700/50">
@@ -169,7 +180,10 @@
                                         {{ $transaction->report->customer_name ?? 'N/A' }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap text-right tabular-nums text-sm font-medium text-gray-900 dark:text-white">
-                                        ₱{{ number_format($transaction->total_amount, 2) }}
+                                        <div>₱{{ number_format($transaction->amountPaidThisPayment(), 2) }}</div>
+                                        @if($transaction->payment_status === 'Partial')
+                                            <div class="text-xs text-gray-400 font-normal">of ₱{{ number_format($transaction->total_amount, 2) }}</div>
+                                        @endif
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         @php
@@ -208,6 +222,14 @@
                                                     </svg>
                                                 </a>
                                             @endif
+                                            <a href="{{ route('transactions.receipt', $transaction) }}" target="_blank"
+                                                class="text-emerald-600 hover:text-emerald-800 dark:text-emerald-400 dark:hover:text-white transition-colors" title="Print Receipt">
+                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                        d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z">
+                                                    </path>
+                                                </svg>
+                                            </a>
                                             <a href="{{ route('transactions.show', $transaction) }}"
                                                 class="text-gray-400 hover:text-blue-600 dark:hover:text-white transition-colors" title="View">
                                                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -218,17 +240,20 @@
                                                     </path>
                                                 </svg>
                                             </a>
-                                            <a href="{{ route('transactions.edit', $transaction) }}"
-                                                class="text-blue-600 hover:text-blue-900 dark:text-gray-400 dark:hover:text-white transition-colors" title="Edit">
-                                                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                        d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
-                                                    </path>
-                                                </svg>
-                                            </a>
+                                            @if(!$transaction->isLocked())
+                                                <a href="{{ route('transactions.edit', $transaction) }}"
+                                                    class="text-blue-600 hover:text-blue-900 dark:text-gray-400 dark:hover:text-white transition-colors" title="Edit">
+                                                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                            d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z">
+                                                        </path>
+                                                    </svg>
+                                                </a>
+                                            @endif
                                             @if(auth()->user()->role === 'Administrator')
                                             <form action="{{ route('transactions.destroy', $transaction) }}" method="POST"
-                                                class="inline-block">
+                                                class="inline-block"
+                                                onsubmit="return confirm('Archive this transaction?')">
                                                 @csrf
                                                 @method('DELETE')
                                                 <button type="submit" class="text-red-500 hover:text-red-700 dark:text-gray-400 dark:hover:text-white transition-colors"

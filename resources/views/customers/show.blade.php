@@ -98,6 +98,8 @@
                                     <tr>
                                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Type / Brand</th>
                                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Model / Serial</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Dealer</th>
+                                        <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Problems</th>
                                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Size</th>
                                         <th class="px-4 py-3 text-left text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">Warranty</th>
                                     </tr>
@@ -112,6 +114,20 @@
                                             <td class="px-4 py-3 text-sm text-gray-500 dark:text-slate-400">
                                                 <p>{{ $app->model_no ?? '-' }}</p>
                                                 <p class="text-xs">{{ $app->serial_no ?? '' }}</p>
+                                            </td>
+                                            <td class="px-4 py-3 text-sm text-gray-500 dark:text-slate-400">{{ $app->dealer ?? '-' }}</td>
+                                            <td class="px-4 py-3 text-sm text-gray-500 dark:text-slate-400">
+                                                @if($app->problems && $app->problems->count() > 0)
+                                                    @foreach($app->problems as $problem)
+                                                        @if($problem->common_problem)
+                                                            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded mr-1 mb-1">{{ $problem->common_problem->problem_name }}</span>
+                                                        @elseif($problem->other_problem)
+                                                            <span class="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded mr-1 mb-1">Other: {{ $problem->other_problem }}</span>
+                                                        @endif
+                                                    @endforeach
+                                                @else
+                                                    <span class="text-xs text-gray-400">No problems</span>
+                                                @endif
                                             </td>
                                             <td class="px-4 py-3 text-sm text-gray-500 dark:text-slate-400">{{ $app->appliance_size ?? '-' }}</td>
                                             <td class="px-4 py-3 text-sm">

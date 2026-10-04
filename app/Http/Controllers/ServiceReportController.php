@@ -108,7 +108,15 @@ class ServiceReportController extends Controller
         $status = $request->input('status');
         $date = $request->input('date');
 
+        $userRole = auth()->user()->role;
+        $technicianName = trim((auth()->user()->first_name ?? '') . ' ' . (auth()->user()->last_name ?? ''));
+
         $services = \App\Models\ServiceReport::with(['customer', 'appliance', 'details'])
+            ->when($userRole === 'Technician', function ($q) use ($technicianName) {
+                $q->whereHas('details', function($query) use ($technicianName) {
+                    $query->where('technician', 'like', "%{$technicianName}%");
+                });
+            })
             ->when($search, function ($q) use ($search) {
                 $q->where(function ($query) use ($search) {
                     $query->where('customer_name', 'like', "%$search%")
@@ -135,11 +143,9 @@ class ServiceReportController extends Controller
     public function create()
     {
         $this->checkServiceCreationAccess();
-        $customers = \App\Models\Customer::with('appliances')->get();
+        $customers = \App\Models\Customer::with('appliances.problems.commonProblem')->get();
         $technicians = $this->getTechniciansWithAvailability();
-        $parts = \App\Models\Part::all();
-        $servicePrices = \App\Models\ServicePrice::all();
-        return view('services.create', compact('customers', 'technicians', 'parts', 'servicePrices'));
+        return view('services.create', compact('customers', 'technicians'));
     }
 
     public function store(Request $request)
@@ -150,17 +156,10 @@ class ServiceReportController extends Controller
             'appliance_id' => 'required|exists:appliances,id',
             'date_in' => 'required|date',
             'status' => 'required|string',
-            'findings' => 'nullable|string',
             'problem_desc' => 'required|string',
-            'labor_cost' => 'nullable|numeric',
-            'remarks' => 'nullable|string',
             'dealer' => 'nullable|string',
             'dop' => 'nullable|date',
             'technicians' => 'nullable|array|max:3',
-            'service_types' => 'nullable|array',
-            'used_parts' => 'nullable|string',
-            'parts' => 'nullable|array',
-            'miscellaneous_cost' => 'nullable|numeric',
         ]);
 
         $customer = \App\Models\Customer::find($validated['customer_id']);
@@ -180,23 +179,16 @@ class ServiceReportController extends Controller
 
         $report = \App\Models\ServiceReport::create($validated);
 
-        // Process Parts & Inventory Sync
-        $partsInput = $request->input('parts', []);
-        $partsTotalCost = $this->processParts($report, $partsInput, true);
-
         // Create initial Service Detail
         $techs = isset($validated['technicians']) ? implode(', ', $validated['technicians']) : null;
-        $labor = $request->labor_cost ?? 0;
-        $miscCost = $request->miscellaneous_cost ?? 0;
-        $totalAmount = $labor + $partsTotalCost + $miscCost;
 
         ServiceDetail::create([
             'report_id' => $report->id,
-            'service_types' => $validated['service_types'] ?? [],
-            'labor' => $labor,
-            'parts_total_charge' => $partsTotalCost,
-            'miscellaneous_cost' => $miscCost,
-            'total_amount' => $totalAmount,
+            'service_types' => [],
+            'labor' => 0,
+            'parts_total_charge' => 0,
+            'miscellaneous_cost' => 0,
+            'total_amount' => 0,
             'complaint' => $request->problem_desc,
             'technician' => $techs,
         ]);
@@ -224,8 +216,12 @@ class ServiceReportController extends Controller
         $customers = \App\Models\Customer::with('appliances')->get();
         $technicians = $this->getTechniciansWithAvailability();
         $parts = \App\Models\Part::all();
-        $servicePrices = \App\Models\ServicePrice::all();
-        $service->load('parts');
+        $servicePrices = \App\Models\ServicePrice::query()
+            ->orderBy('service_name')
+            ->get()
+            ->unique('service_name')
+            ->values();
+        $service->load(['parts', 'appliance.problems.commonProblem']);
         return view('services.edit', compact('service', 'customers', 'technicians', 'parts', 'servicePrices'));
     }
 
@@ -241,21 +237,27 @@ class ServiceReportController extends Controller
             'appliance_id' => 'required|exists:appliances,id',
             'date_in' => 'required|date',
             'status' => 'required|string',
-            'findings' => 'nullable|string',
             'problem_desc' => 'required|string',
-            'labor_cost' => 'nullable|numeric',
-            'remarks' => 'nullable|string',
             'dealer' => 'nullable|string',
             'dop' => 'nullable|date',
             'technicians' => 'nullable|array|max:3',
             'service_types' => 'nullable|array',
-            'used_parts' => 'nullable|string',
+            'custom_services' => 'nullable|array',
+            'custom_services.*.name' => 'nullable|string|max:255',
+            'custom_services.*.price' => 'nullable|numeric|min:0',
+            'findings' => 'nullable|string',
+            'remarks' => 'nullable|string',
             'parts' => 'nullable|array',
             'miscellaneous_cost' => 'nullable|numeric',
+            'labor_cost' => 'nullable|numeric',
         ];
 
         if ($userRole === 'Technician') {
-            $ignores = ['customer_id', 'appliance_id', 'date_in', 'problem_desc', 'labor_cost', 'dealer', 'dop', 'technicians', 'service_types'];
+            $ignores = ['customer_id', 'appliance_id', 'date_in', 'problem_desc', 'dealer', 'dop', 'technicians'];
+            foreach ($ignores as $ignore)
+                unset($rules[$ignore]);
+        } elseif ($userRole === 'Secretary') {
+            $ignores = ['service_types', 'custom_services', 'findings', 'remarks', 'parts', 'miscellaneous_cost', 'labor_cost'];
             foreach ($ignores as $ignore)
                 unset($rules[$ignore]);
         }
@@ -268,37 +270,73 @@ class ServiceReportController extends Controller
             $validated['appliance_id'] = $service->appliance_id;
             $validated['date_in'] = $service->date_in;
             $validated['problem_desc'] = $service->details ? $service->details->complaint : '';
-            $validated['labor_cost'] = $service->details ? $service->details->labor : 0;
             $validated['dealer'] = $service->dealer;
             $validated['dop'] = $service->dop;
-            $validated['service_types'] = $service->details ? $service->details->service_types : [];
             $validated['technicians'] = $service->details ? explode(', ', $service->details->technician) : [];
+        } elseif ($userRole === 'Secretary') {
+            $validated['service_types'] = $service->details ? $service->details->service_types : [];
+            $validated['custom_services'] = $service->details ? ($service->details->custom_services ?? []) : [];
+            $validated['findings'] = $service->findings ?? '';
+            $validated['remarks'] = $service->remarks ?? '';
+            $validated['labor_cost'] = $service->details ? $service->details->labor : 0;
+            $validated['miscellaneous_cost'] = $service->details ? $service->details->miscellaneous_cost : 0;
         }
+
+        // Merge catalog + custom service names into service_types for display/history
+        $customServices = collect($validated['custom_services'] ?? [])
+            ->filter(fn ($row) => filled($row['name'] ?? null))
+            ->map(fn ($row) => [
+                'name' => trim($row['name']),
+                'price' => (float) ($row['price'] ?? 0),
+            ])
+            ->values()
+            ->all();
+
+        $catalogTypes = collect($validated['service_types'] ?? [])
+            ->filter()
+            ->map(fn ($n) => trim($n))
+            ->values()
+            ->all();
+
+        $validated['service_types'] = collect($catalogTypes)
+            ->merge(collect($customServices)->pluck('name'))
+            ->unique()
+            ->values()
+            ->all();
+        $validated['custom_services'] = $customServices;
 
         $customer = \App\Models\Customer::find($validated['customer_id']);
         $validated['customer_name'] = trim($customer->first_name . ' ' . $customer->last_name);
 
         $service->update($validated);
 
-        // Process Parts & Inventory Sync
+        // Process Parts & Inventory Sync (only for technician or admin)
         $partsTotalCost = $service->details ? $service->details->parts_total_charge : 0;
-        $partsInput = $request->input('parts', []);
-        $partsTotalCost = $this->processParts($service, $partsInput, false);
+        if ($userRole !== 'Cashier') {
+            $partsInput = $request->input('parts', []);
+            $partsTotalCost = $this->processParts($service, $partsInput, false);
+        }
 
         // Update or Create ServiceDetail
         $techs = isset($validated['technicians']) ? implode(', ', $validated['technicians']) : null;
-        $labor = $request->labor_cost ?? ($service->details ? $service->details->labor : 0);
-        $miscCost = $request->miscellaneous_cost ?? ($service->details ? $service->details->miscellaneous_cost : 0);
+        if ($userRole === 'Secretary') {
+            $labor = $validated['labor_cost'] ?? ($service->details->labor ?? 0);
+            $miscCost = $validated['miscellaneous_cost'] ?? ($service->details->miscellaneous_cost ?? 0);
+        } else {
+            $labor = $request->input('labor_cost', $service->details->labor ?? 0);
+            $miscCost = $request->input('miscellaneous_cost', $service->details->miscellaneous_cost ?? 0);
+        }
         $totalAmount = $labor + $partsTotalCost + $miscCost;
 
         ServiceDetail::updateOrCreate(
             ['report_id' => $service->id],
             [
-                'complaint' => $request->problem_desc,
+                'complaint' => $service->details ? $service->details->complaint : $request->problem_desc,
                 'labor' => $labor,
                 'parts_total_charge' => $partsTotalCost,
                 'miscellaneous_cost' => $miscCost,
                 'service_types' => $validated['service_types'] ?? [],
+                'custom_services' => $validated['custom_services'] ?? [],
                 'total_amount' => $totalAmount,
                 'technician' => $techs,
             ]

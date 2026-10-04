@@ -1,78 +1,23 @@
 <x-app-layout>
     <div class="w-full mx-auto space-y-6" x-data="{
         customers: {{ Js::from($customers) }},
-        parts: {{ Js::from($parts) }},
-        servicePrices: {{ Js::from($servicePrices) }},
         techniciansList: {{ Js::from($technicians) }},
         searchTech: '',
         filterTech: '',
         selectedTechs: {{ Js::from(old('technicians', [])) }},
         selectedCustomerId: '{{ old('customer_id') }}',
         selectedApplianceId: '{{ old('appliance_id') }}',
-        selectedPartId: '',
-        partQuantity: 1,
-        miscCost: {{ old('miscellaneous_cost', 0) }},
-        selectedParts: [],
-        laborBase: {{ old('labor_cost', 0) }},
-        checkedTypes: {{ Js::from(old('service_types', [])) }},
         isDirty: false,
         originalValues: {},
-        init() {
-            this.$nextTick(() => {
-                const form = this.$el.querySelector('form');
-                if (form) {
-                    const inputs = form.querySelectorAll('input:not([type=hidden]), textarea, select');
-                    inputs.forEach(input => {
-                        if (input.name) {
-                            this.originalValues[input.name] = input.value;
-                        }
-                    });
-                }
-            });
-        },
-        checkDirty() {
-            const form = this.$el.querySelector('form');
-            if (form) {
-                const inputs = form.querySelectorAll('input:not([type=hidden]), textarea, select');
-                this.isDirty = false;
-                inputs.forEach(input => {
-                    if (input.name && this.originalValues[input.name] !== undefined) {
-                        if (input.value !== this.originalValues[input.name]) {
-                            this.isDirty = true;
-                        }
-                    }
-                });
-            }
-            return this.isDirty;
-        },
         get currentCustomer() {
             return this.customers.find(c => c.id == this.selectedCustomerId) || null;
         },
         get customerAppliances() {
             return this.currentCustomer ? this.currentCustomer.appliances : [];
         },
-        get totalPartsCost() {
-            return this.selectedParts.reduce((total, part) => {
-                if (part.is_not_working) return total;
-                return total + (part.price * part.quantity);
-            }, 0);
-        },
-        get computedLabor() {
-            let base = 0;
-            this.servicePrices.forEach(sp => {
-                if (this.checkedTypes.includes(sp.service_name)) {
-                    base += parseFloat(sp.service_price);
-                }
-            });
-            return base;
-        },
-        toggleServiceType(name) {
-            const idx = this.checkedTypes.indexOf(name);
-            if (idx === -1) {
-                this.checkedTypes.push(name);
-            } else {
-                this.checkedTypes.splice(idx, 1);
-            }
+        get selectedAppliance() {
+            if (!this.selectedApplianceId) return null;
+            return this.customerAppliances.find(a => a.id == this.selectedApplianceId) || null;
         },
         get filteredTechnicians() {
             let filtered = this.techniciansList;
@@ -81,8 +26,8 @@
             }
             if (this.searchTech.trim() !== '') {
                 let s = this.searchTech.toLowerCase();
-                filtered = filtered.filter(t => 
-                    ((t.first_name || '') + ' ' + (t.last_name || '')).toLowerCase().includes(s) || 
+                filtered = filtered.filter(t =>
+                    ((t.first_name || '') + ' ' + (t.last_name || '')).toLowerCase().includes(s) ||
                     (t.role_title || '').toLowerCase().includes(s)
                 );
             }
@@ -105,51 +50,57 @@
             let l = (lastName || '').charAt(0);
             return (f + l).toUpperCase() || '?';
         },
-        addPart() {
-            if (!this.selectedPartId || this.partQuantity < 1) return;
-            const partIndex = this.parts.findIndex(p => p.id == this.selectedPartId);
-            if (partIndex === -1) return;
-            const part = this.parts[partIndex];
-            const existingIndex = this.selectedParts.findIndex(p => p.id === part.id);
-            if (existingIndex !== -1) {
-                this.selectedParts[existingIndex].quantity += parseInt(this.partQuantity);
-            } else {
-                this.selectedParts.push({
-                    id: part.id,
-                    name: part.name,
-                    part_no: part.part_no,
-                    price: parseFloat(part.price),
-                    quantity: parseInt(this.partQuantity),
-                    is_not_working: false
-                });
-            }
-            this.selectedPartId = '';
-            this.partQuantity = 1;
-        },
-        removePart(id) {
-            this.selectedParts = this.selectedParts.filter(p => p.id !== id);
-        },
         init() {
+            this.$nextTick(() => {
+                const form = this.$el.querySelector('form');
+                if (form) {
+                    const inputs = form.querySelectorAll('input:not([type=hidden]), textarea, select');
+                    inputs.forEach(input => {
+                        if (input.name) {
+                            this.originalValues[input.name] = input.value;
+                        }
+                    });
+                }
+            });
             this.$watch('selectedCustomerId', () => {
                 this.selectedApplianceId = '';
+                document.getElementById('dealer').value = '';
+                document.getElementById('dop').value = '';
             });
-            // Re-populate selectedParts from old input if validation fails
-            let oldParts = {{ Js::from(old('parts', [])) }};
-            if (oldParts.length > 0) {
-                oldParts.forEach(oldPart => {
-                    const p = this.parts.find(px => px.id == oldPart.id);
-                    if (p) {
-                         this.selectedParts.push({
-                            id: p.id,
-                            name: p.name,
-                            part_no: p.part_no,
-                            price: parseFloat(oldPart.price || p.price),
-                            quantity: parseInt(oldPart.quantity),
-                            is_not_working: oldPart.is_not_working === '1' || oldPart.is_not_working === true
-                        });
+            this.$watch('selectedApplianceId', () => {
+                if (this.selectedAppliance) {
+                    // Auto-fill dealer from appliance
+                    document.getElementById('dealer').value = this.selectedAppliance.dealer || '';
+                    document.getElementById('dop').value = this.selectedAppliance.date_in || '';
+                    // Auto-fill problem description with customer's reported problems
+                    if (this.selectedAppliance.problems && this.selectedAppliance.problems.length > 0) {
+                        let problems = this.selectedAppliance.problems.map(p => {
+                            if (p.common_problem) {
+                                return p.common_problem.problem_name;
+                            } else if (p.other_problem) {
+                                return 'Other: ' + p.other_problem;
+                            }
+                            return '';
+                        }).filter(p => p).join(', ');
+                        document.getElementById('problem_desc').value = problems;
+                    }
+                }
+            });
+        },
+        checkDirty() {
+            const form = this.$el.querySelector('form');
+            if (form) {
+                const inputs = form.querySelectorAll('input:not([type=hidden]), textarea, select');
+                this.isDirty = false;
+                inputs.forEach(input => {
+                    if (input.name && this.originalValues[input.name] !== undefined) {
+                        if (input.value !== this.originalValues[input.name]) {
+                            this.isDirty = true;
+                        }
                     }
                 });
             }
+            return this.isDirty;
         }
     }">
         <!-- Header -->
@@ -327,281 +278,14 @@
                             @enderror
                         </div>
 
-                        <!-- Service Types (connected to Service Prices) -->
-                        <div class="md:col-span-2 mt-2">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">Service Types <span class="text-red-500">*</span></label>
-                            <p class="text-xs text-gray-500 dark:text-slate-400 mb-2">Each checked service type adds its configured price to the labor cost.</p>
-                            <div class="flex flex-wrap gap-4">
-                                @foreach($servicePrices as $sp)
-                                <label class="inline-flex items-center cursor-pointer select-none">
-                                    <input type="checkbox" name="service_types[]" value="{{ $sp->service_name }}"
-                                        class="rounded border-gray-300 dark:border-slate-500 text-blue-600 dark:text-blue-400 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
-                                        {{ collect(old('service_types'))->contains($sp->service_name) ? 'checked' : '' }}
-                                        @change="toggleServiceType('{{ $sp->service_name }}')">
-                                    <span class="ml-2 text-sm text-gray-700 dark:text-slate-200">{{ $sp->service_name }}</span>
-                                    <span class="ml-1 text-xs text-green-700 font-medium">(+₱{{ number_format($sp->service_price, 2) }})</span>
-                                </label>
-                                @endforeach
-                                @if($servicePrices->isEmpty())
-                                <p class="text-sm text-gray-400 italic">No service prices configured yet. <a href="{{ route('prices.create') }}" class="text-blue-600 dark:text-blue-400 underline">Add service prices</a>.</p>
-                                @endif
-                            </div>
-                            @error('service_types')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <!-- Problem Description -->
+                        <!-- Problem Description (from customer's appliance problems) -->
                         <div class="md:col-span-2">
-                            <label for="problem_desc" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Problem Description<span class="text-red-500">*</span></label>
+                            <label for="problem_desc" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Problem Description (from Customer)<span class="text-red-500">*</span></label>
                             <textarea id="problem_desc" name="problem_desc" rows="3" required
-                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">{{ old('problem_desc') }}</textarea>
+                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                placeholder="This will be auto-filled from the customer's appliance problems">{{ old('problem_desc') }}</textarea>
+                            <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">This field is auto-populated from the customer's reported problems. You can edit if needed.</p>
                             @error('problem_desc')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <!-- Findings -->
-                        <div class="md:col-span-2">
-                            <label for="findings" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Findings <span class="text-red-500">*</span></label>
-                            <textarea id="findings" name="findings" rows="3" required
-                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">{{ old('findings') }}</textarea>
-                            @error('findings')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <!-- Remarks -->
-                        <div class="md:col-span-2">
-                            <label for="remarks" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Remarks <span class="text-red-500">*</span></label>
-                            <textarea id="remarks" name="remarks" rows="2" required
-                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">{{ old('remarks') }}</textarea>
-                            @error('remarks')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <!-- Attachments Upload -->
-                        <div class="md:col-span-2" x-data="{ 
-                            files: [],
-                            init() {
-                                this.$watch('files', () => {
-                                    if(this.files.length === 0) {
-                                        document.getElementById('attachments').value = '';
-                                    }
-                                });
-                            },
-                            removeFile(index) {
-                                this.files.splice(index, 1);
-                                
-                                // Reconstruct the FileList using DataTransfer
-                                const dt = new DataTransfer();
-                                const input = document.getElementById('attachments');
-                                const { files } = input;
-                                
-                                for (let i = 0; i < files.length; i++) {
-                                    if (i !== index) {
-                                        dt.items.add(files[i]);
-                                    }
-                                }
-                                
-                                input.files = dt.files;
-                            }
-                        }">
-                            <label class="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-1">Attachments <span class="text-gray-400 text-xs font-normal">Optional (Max 5 files)</span></label>
-
-                            <div>
-                                <label for="attachments" class="inline-flex items-center px-4 py-2 bg-blue-50 border border-blue-200 rounded-lg text-sm font-medium text-blue-700 hover:bg-blue-100 cursor-pointer transition-colors cursor-pointer">
-                                    <svg class="w-5 h-5 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4v16m8-8H4"></path>
-                                    </svg>
-                                    Choose Files
-                                </label>
-                                <input type="file" name="attachments[]" id="attachments" multiple accept="image/*,.pdf,.doc,.docx" class="hidden"
-                                    @change="
-                                        let selected = Array.from($event.target.files);
-                                        if (selected.length > 5) {
-                                            alert('Maximum of 5 files allowed.');
-                                            $event.target.value = '';
-                                            files = [];
-                                        } else {
-                                            files = selected.map(f => f.name);
-                                        }
-                                    ">
-                            </div>
-
-                            <div x-show="files.length > 0" class="mt-3 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                                <template x-for="(file, index) in files" :key="index">
-                                    <div class="flex items-center justify-between text-sm text-gray-600 bg-gray-50 p-2 rounded border border-gray-100 dark:bg-slate-700 dark:border-slate-600 dark:text-slate-300 shadow-sm">
-                                        <div class="flex items-center truncate">
-                                            <svg class="flex-shrink-0 w-4 h-4 mr-2 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13"></path>
-                                            </svg>
-                                            <span x-text="file" class="truncate"></span>
-                                        </div>
-                                        <button type="button" @click="removeFile(index)" class="ml-2 text-gray-400 hover:text-red-500 focus:outline-none transition-colors">
-                                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-                                            </svg>
-                                        </button>
-                                    </div>
-                                </template>
-                            </div>
-                            @error('attachments.*')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
-
-                        <!-- Dynamic Used Parts -->
-                        <div class="md:col-span-2 bg-gray-50 dark:bg-slate-700/50 p-4 rounded-lg border border-gray-200 dark:border-slate-600">
-                            <h3 class="text-sm font-medium text-gray-900 dark:text-white mb-3">Parts Used (Inventory)</h3>
-
-                            <div class="flex items-end gap-3 mb-4">
-                                <div class="flex-1">
-                                    <label class="block text-xs font-medium text-gray-700 dark:text-slate-200">Select Part</label>
-                                    <select x-model="selectedPartId"
-                                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                                        <option value="">-- Choose Part --</option>
-                                        <template x-for="part in parts" :key="part.id">
-                                            <option :value="part.id"
-                                                x-text="part.part_no + ' - ' + part.name + ' (₱' + part.price + ') - Stock: ' + part.quantity_stock">
-                                            </option>
-                                        </template>
-                                    </select>
-                                </div>
-                                <div class="w-24">
-                                    <label class="block text-xs font-medium text-gray-700 dark:text-slate-200">Qty</label>
-                                    <input type="number" x-model="partQuantity" min="1"
-                                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                                </div>
-                                <button type="button" @click="addPart"
-                                    class="mb-px px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900">
-                                    Add Part
-                                </button>
-                            </div>
-
-                            <!-- Parts Table -->
-                            <div x-show="selectedParts.length > 0"
-                                class="mt-4 border border-gray-200 dark:border-slate-600 rounded-md overflow-hidden bg-white dark:bg-slate-800">
-                                <table class="min-w-full divide-y divide-gray-200">
-                                    <thead class="bg-gray-50 dark:bg-slate-700/50">
-                                        <tr>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-slate-400">Part No.
-                                            </th>
-                                            <th class="px-4 py-2 text-left text-xs font-medium text-gray-500 dark:text-slate-400">
-                                                Description</th>
-                                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-slate-400">Price
-                                            </th>
-                                            <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-slate-400">Qty</th>
-                                            <th class="px-4 py-2 text-right text-xs font-medium text-gray-500 dark:text-slate-400">Subtotal
-                                            </th>
-                                            <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-slate-400">Not Working
-                                            </th>
-                                            <th class="px-4 py-2 text-center text-xs font-medium text-gray-500 dark:text-slate-400">Action
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody class="divide-y divide-gray-200">
-                                        <template x-for="(part, index) in selectedParts" :key="part.id">
-                                            <tr>
-                                                <td class="px-4 py-2 text-sm text-gray-900 dark:text-white" x-text="part.part_no"></td>
-                                                <td class="px-4 py-2 text-sm text-gray-900 dark:text-white" x-text="part.name"></td>
-                                                <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-white"
-                                                    x-text="'₱' + part.price.toFixed(2)"></td>
-                                                <td class="px-4 py-2 text-sm text-center text-gray-900 dark:text-white">
-                                                    <input type="number" x-model.number="part.quantity" min="1"
-                                                        class="w-16 p-1 text-center text-sm border-gray-300 dark:border-slate-500 rounded"
-                                                        @change="$dispatch('input')">
-                                                </td>
-                                                <td class="px-4 py-2 text-sm text-right text-gray-900 dark:text-white"
-                                                    x-text="'₱' + (part.is_not_working ? '0.00' : (part.price * part.quantity).toFixed(2))"></td>
-                                                <td class="px-4 py-2 text-sm text-center text-gray-900 dark:text-white">
-                                                    <input type="checkbox" x-model="part.is_not_working" class="rounded border-gray-300 text-blue-600 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
-                                                </td>
-                                                <td class="px-4 py-2 text-sm text-center">
-                                                    <button type="button" @click="removePart(part.id)"
-                                                        class="text-red-500 hover:text-red-700">
-                                                        <svg class="h-4 w-4 inline" fill="none" viewBox="0 0 24 24"
-                                                            stroke="currentColor">
-                                                            <path stroke-linecap="round" stroke-linejoin="round"
-                                                                stroke-width="2"
-                                                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                                        </svg>
-                                                    </button>
-                                                </td>
-
-                                                <!-- Hidden inputs to submit array -->
-                                                <td class="hidden">
-                                                    <input type="hidden" :name="'parts['+index+'][id]'"
-                                                        :value="part.id">
-                                                    <input type="hidden" :name="'parts['+index+'][quantity]'"
-                                                        :value="part.quantity">
-                                                    <input type="hidden" :name="'parts['+index+'][price]'"
-                                                        :value="part.price">
-                                                    <input type="hidden" :name="'parts['+index+'][is_not_working]'"
-                                                        :value="part.is_not_working ? '1' : '0'">
-                                                </td>
-                                            </tr>
-                                        </template>
-                                    </tbody>
-                                    <tfoot class="bg-gray-50 dark:bg-slate-700/50 font-semibold">
-                                        <tr>
-                                            <td colspan="4" class="px-4 py-3 text-right text-sm text-gray-900 dark:text-white">Parts
-                                                Total:</td>
-                                            <td class="px-4 py-3 text-right text-sm text-blue-700 dark:blue-600"
-                                                x-text="'₱' + totalPartsCost.toFixed(2)"></td>
-                                            <td colspan="2" class="px-4 py-3"></td>
-                                        </tr>
-                                    </tfoot>
-                                </table>
-                            </div>
-
-                            <!-- Optional manual text just in case they need to write something else that is not in inventory -->
-                            <div class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div>
-                                    <label for="used_parts" class="block text-xs font-medium text-gray-700 dark:text-slate-200">Additional Notes / Miscellaneous Not In Inventory</label>
-                                    <textarea id="used_parts" name="used_parts" rows="2"
-                                        class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                                        placeholder="Any screws, tapes, manual items used...">{{ old('used_parts') }}</textarea>
-                                </div>
-                                <div>
-                                    <label for="miscellaneous_cost" class="block text-xs font-medium text-gray-700 dark:text-slate-200">Miscellaneous Cost</label>
-                                    <div class="mt-1 relative rounded-md shadow-sm">
-                                        <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                            <span class="text-gray-500 sm:text-sm">₱</span>
-                                        </div>
-                                        <input type="number" name="miscellaneous_cost" id="miscellaneous_cost" step="0.01" min="0" x-model.number="miscCost"
-                                            class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-7 sm:text-sm border-gray-300 dark:border-slate-500 rounded-lg" placeholder="0.00">
-                                    </div>
-                                    @error('miscellaneous_cost')
-                                    <p class="mt-1 text-xs text-red-600">{{ $message }}</p>
-                                    @enderror
-                                </div>
-                            </div>
-
-                            <div class="mt-4 p-3 bg-blue-50 dark:bg-slate-700/50 rounded-lg border border-blue-100 dark:border-slate-600 flex justify-between items-center text-sm font-medium text-gray-900 dark:text-white mb-1">
-                                <span>Total Labor Material Cost (Parts + Misc):</span>
-                                <span class="text-lg text-blue-700 dark:text-blue-400 font-bold" x-text="'₱' + (totalPartsCost + (Number(miscCost) || 0)).toFixed(2)"></span>
-                            </div>
-                        </div>
-
-                        <!-- Labor Cost (auto-computed from service types) -->
-                        <div>
-                            <label for="labor_cost" class="block text-sm font-medium text-gray-700 dark:text-slate-200">
-                                Labor Cost <span class="text-red-500">*</span>
-                            </label>
-                            <div class="mt-1 relative rounded-md shadow-sm">
-                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                    <span class="text-gray-500 dark:text-slate-400 sm:text-sm">₱</span>
-                                </div>
-                                <input type="number" name="labor_cost" id="labor_cost" step="0.01" min="0" required
-                                    :value="computedLabor"
-                                    x-bind:value="computedLabor"
-                                    class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-7 sm:text-sm border-gray-300 rounded-lg bg-gray-50 dark:bg-slate-700/50"
-                                    placeholder="0.00" readonly>
-                            </div>
-                            <p class="text-xs text-gray-500 dark:text-slate-400 mt-1">Calculated from selected service types.</p>
-                            @error('labor_cost')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>

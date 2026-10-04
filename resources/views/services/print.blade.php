@@ -161,6 +161,21 @@
             </div>
         </div>
 
+        @if($service->appliance && $service->appliance->problems && $service->appliance->problems->count() > 0)
+            <div class="section">
+                <div class="section-title">Appliance Reported Problems</div>
+                <div style="min-height: 50px; border: 1px solid #eee; padding: 10px;">
+                    @foreach($service->appliance->problems as $problem)
+                        @if($problem->common_problem)
+                            <span style="display: inline-block; background-color: #e3f2fd; color: #1565c0; padding: 2px 8px; margin: 2px; border-radius: 4px; font-size: 12px;">{{ $problem->common_problem->problem_name }}</span>
+                        @elseif($problem->other_problem)
+                            <span style="display: inline-block; background-color: #f3e5f5; color: #7b1fa2; padding: 2px 8px; margin: 2px; border-radius: 4px; font-size: 12px;">Other: {{ $problem->other_problem }}</span>
+                        @endif
+                    @endforeach
+                </div>
+            </div>
+        @endif
+
         <div class="section">
             <div class="section-title">Diagnosis & Findings</div>
             <div style="min-height: 100px; border: 1px solid #eee; padding: 10px;">
@@ -238,6 +253,23 @@
                             {{ number_format($service->details ? $service->details->total_amount : 0, 2) }}</strong>
                     </td>
                 </tr>
+                <tr>
+                    <td style="border: none; text-align: right; padding-right: 20px;"><strong>Amount Paid:</strong></td>
+                    <td style="border: none; text-align: right;">Php
+                        {{ number_format($service->transactions->sum(fn ($t) => $t->amountPaidThisPayment()), 2) }}
+                    </td>
+                </tr>
+                @php
+                    $printBill = (float) ($service->details->total_amount ?? 0);
+                    $printPaid = $service->transactions->sum(fn ($t) => $t->amountPaidThisPayment());
+                    $printRemain = max(0, $printBill - $printPaid);
+                @endphp
+                <tr>
+                    <td style="border: none; text-align: right; padding-right: 20px; font-size: 16px; color: {{ $printRemain > 0 ? '#d32f2f' : '#388e3c' }};"><strong>{{ $printRemain > 0 ? 'REMAINING BALANCE' : 'FULLY PAID' }}:</strong></td>
+                    <td style="border: none; text-align: right; font-size: 16px; color: {{ $printRemain > 0 ? '#d32f2f' : '#388e3c' }};"><strong>Php
+                            {{ number_format($printRemain, 2) }}</strong>
+                    </td>
+                </tr>
             </table>
             <div style="clear: both;"></div>
         </div>
@@ -258,7 +290,7 @@
                         @foreach($service->transactions as $trans)
                             <tr>
                                 <td>{{ $trans->receipt_no ?? 'N/A' }}</td>
-                                <td>Php {{ number_format($trans->total_amount, 2) }}</td>
+                                <td>Php {{ number_format($trans->amountPaidThisPayment(), 2) }}</td>
                                 <td>{{ $trans->payment_status }}</td>
                                 <td>{{ $trans->created_at->format('M d, Y') }}</td>
                             </tr>

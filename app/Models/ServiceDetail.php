@@ -50,6 +50,7 @@ class ServiceDetail extends Model
     protected $fillable = [
         'report_id',
         'service_types',
+        'custom_services',
         'service_charge',
         'date_repaired',
         'date_delivered',
@@ -67,6 +68,7 @@ class ServiceDetail extends Model
 
     protected $casts = [
         'service_types' => 'array',
+        'custom_services' => 'array',
         'date_repaired' => 'date',
         'date_delivered' => 'date',
     ];

@@ -53,10 +53,16 @@ class Appliance extends Model
         'category',
         'status',
         'appliance_size',
+        'dealer',
     ];
 
     public function customer()
     {
         return $this->belongsTo(Customer::class);
+    }
+
+    public function problems()
+    {
+        return $this->hasMany(ApplianceProblem::class);
     }
 }

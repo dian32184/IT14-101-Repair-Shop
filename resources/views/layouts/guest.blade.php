@@ -8,22 +8,14 @@
 
     <title>{{ config('app.name', 'Laravel') }}</title>
 
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700&display=swap" rel="stylesheet" />
 
-    <!-- Scripts & Styles (Offline TailWind via Vite) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
-
-    <style>
-        body {
-            font-family: 'Inter', sans-serif;
-        }
-    </style>
 </head>
 
-<body class="font-sans antialiased text-gray-900 bg-gray-50 flex flex-col justify-center items-center min-h-screen">
-    <div class="w-full sm:max-w-md bg-white p-8 rounded-xl shadow-lg border border-gray-100">
+<body class="font-sans antialiased text-gray-900 app-bg flex flex-col justify-center items-center min-h-screen p-4">
+    <div class="w-full sm:max-w-md bg-white p-8 rounded-2xl shadow-card border border-slate-200/80">
         {{ $slot }}
     </div>
 

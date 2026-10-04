@@ -1,11 +1,18 @@
 <x-app-layout>
     <div class="space-y-6">
+        <div>
+            <h2 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-white">Overview</h2>
+            <p class="mt-1 text-sm text-gray-500 dark:text-slate-400">Shop activity at a glance for this week</p>
+        </div>
 
+
+        @if($userRole === 'Administrator')
+        <!-- Administrator Dashboard -->
         <!-- Stats Grid -->
         <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
             <!-- Weekly Customers -->
             <a href="{{ route('customers.index') }}"
-                class="block bg-[#fafafa] dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-300">
+                class="ui-stat-card">
                 <div class="flex justify-between items-start">
                     <div class="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -27,7 +34,7 @@
 
             <!-- Weekly Income -->
             <a href="{{ route('transactions.index') }}"
-                class="block bg-[#fafafa] dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-300">
+                class="ui-stat-card">
                 <div class="flex justify-between items-start">
                     <div class="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-700 dark:text-green-400">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -49,7 +56,7 @@
 
             <!-- Weekly Services -->
             <a href="{{ route('services.index') }}"
-                class="block bg-[#fafafa] dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-300">
+                class="ui-stat-card">
                 <div class="flex justify-between items-start">
                     <div class="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-700 dark:text-purple-400">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -73,7 +80,7 @@
 
             <!-- Growth Rate -->
             <a href="{{ route('transactions.index') }}"
-                class="block bg-[#fafafa] dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm flex flex-col justify-between hover:shadow-md transition-all duration-300">
+                class="ui-stat-card">
                 <div class="flex justify-between items-start">
                     <div class="p-3 bg-orange-100 dark:bg-orange-900/30 rounded-lg text-orange-700 dark:text-orange-400">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -93,10 +100,251 @@
             </a>
         </div>
 
-        <!-- Charts & Activity Row -->
+        @elseif($userRole === 'Secretary')
+        <!-- Secretary Dashboard -->
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Weekly Customers -->
+            <a href="{{ route('customers.index') }}"
+                class="ui-stat-card">
+                <div class="flex justify-between items-start">
+                    <div class="p-3 bg-blue-50 dark:bg-blue-900/30 rounded-lg text-blue-600 dark:text-blue-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z">
+                            </path>
+                        </svg>
+                    </div>
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $customerGrowth >= 0 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' }}">
+                        {{ $customerGrowth >= 0 ? '+' : '' }}{{ $customerGrowth }}%
+                    </span>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-3xl font-bold text-gray-900 dark:text-white">{{ $weeklyCustomers }}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Weekly Customers</p>
+                </div>
+            </a>
+
+            <!-- Pending Services -->
+            <a href="{{ route('services.index', ['status' => 'Pending']) }}"
+                class="ui-stat-card">
+                <div class="flex justify-between items-start">
+                    <div class="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg text-yellow-700 dark:text-yellow-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-3xl font-bold text-gray-900 dark:text-white">{{ $pendingServices }}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Pending Services</p>
+                </div>
+            </a>
+
+            <!-- In Progress Services -->
+            <a href="{{ route('services.index', ['status' => 'In Progress']) }}"
+                class="ui-stat-card">
+                <div class="flex justify-between items-start">
+                    <div class="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-700 dark:text-blue-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-3xl font-bold text-gray-900 dark:text-white">{{ $inProgressServices }}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">In Progress</p>
+                </div>
+            </a>
+
+            <!-- Low Stock Alert -->
+            <a href="{{ route('inventory.index', ['status' => 'Low Stock']) }}"
+                class="ui-stat-card">
+                <div class="flex justify-between items-start">
+                    <div class="p-3 bg-red-100 dark:bg-red-900/30 rounded-lg text-red-700 dark:text-red-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-3xl font-bold text-gray-900 dark:text-white">{{ $lowStockParts->count() }}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Low Stock Items</p>
+                </div>
+            </a>
+        </div>
+
+        @elseif($userRole === 'Cashier')
+        <!-- Cashier Dashboard -->
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Daily Income -->
+            <a href="{{ route('transactions.index') }}"
+                class="ui-stat-card">
+                <div class="flex justify-between items-start">
+                    <div class="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-700 dark:text-green-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-3xl font-bold text-gray-900 dark:text-white">₱{{ number_format($dailyIncome, 2) }}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Today's Income</p>
+                </div>
+            </a>
+
+            <!-- Weekly Income -->
+            <a href="{{ route('transactions.index') }}"
+                class="ui-stat-card">
+                <div class="flex justify-between items-start">
+                    <div class="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-700 dark:text-blue-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z">
+                            </path>
+                        </svg>
+                    </div>
+                    <span
+                        class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $incomeGrowth >= 0 ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400' : 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400' }}">
+                        {{ $incomeGrowth >= 0 ? '+' : '' }}{{ $incomeGrowth }}%
+                    </span>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-3xl font-bold text-gray-900 dark:text-white">₱{{ number_format($weeklyIncome, 2) }}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Weekly Income</p>
+                </div>
+            </a>
+
+            <!-- Outstanding Payments -->
+            <a href="{{ route('transactions.index') }}"
+                class="ui-stat-card">
+                <div class="flex justify-between items-start">
+                    <div class="p-3 bg-red-100 dark:bg-red-900/30 rounded-lg text-red-700 dark:text-red-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-3xl font-bold text-gray-900 dark:text-white">₱{{ number_format($outstandingPayments, 2) }}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Outstanding</p>
+                </div>
+            </a>
+
+            <!-- Pending Invoices -->
+            <a href="{{ route('services.index', ['status' => 'Completed']) }}"
+                class="ui-stat-card">
+                <div class="flex justify-between items-start">
+                    <div class="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg text-yellow-700 dark:text-yellow-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-3xl font-bold text-gray-900 dark:text-white">{{ $completedServices }}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Ready to Bill</p>
+                </div>
+            </a>
+        </div>
+
+        @elseif($userRole === 'Technician')
+        <!-- Technician Dashboard -->
+        <!-- Stats Grid -->
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+            <!-- Assigned Services -->
+            <a href="{{ route('services.index') }}"
+                class="ui-stat-card">
+                <div class="flex justify-between items-start">
+                    <div class="p-3 bg-blue-100 dark:bg-blue-900/30 rounded-lg text-blue-700 dark:text-blue-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-3xl font-bold text-gray-900 dark:text-white">{{ $assignedServices }}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">My Assigned Jobs</p>
+                </div>
+            </a>
+
+            <!-- In Progress -->
+            <a href="{{ route('services.index', ['status' => 'In Progress']) }}"
+                class="ui-stat-card">
+                <div class="flex justify-between items-start">
+                    <div class="p-3 bg-yellow-100 dark:bg-yellow-900/30 rounded-lg text-yellow-700 dark:text-yellow-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M13 10V3L4 14h7v7l9-11h-7z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-3xl font-bold text-gray-900 dark:text-white">{{ $inProgressServices }}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">In Progress</p>
+                </div>
+            </a>
+
+            <!-- Completed Today -->
+            <a href="{{ route('services.index', ['status' => 'Completed']) }}"
+                class="ui-stat-card">
+                <div class="flex justify-between items-start">
+                    <div class="p-3 bg-green-100 dark:bg-green-900/30 rounded-lg text-green-700 dark:text-green-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-3xl font-bold text-gray-900 dark:text-white">{{ $completedToday }}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Completed Today</p>
+                </div>
+            </a>
+
+            <!-- Work Queue -->
+            <a href="{{ route('services.index') }}"
+                class="ui-stat-card">
+                <div class="flex justify-between items-start">
+                    <div class="p-3 bg-purple-100 dark:bg-purple-900/30 rounded-lg text-purple-700 dark:text-purple-400">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10">
+                            </path>
+                        </svg>
+                    </div>
+                </div>
+                <div class="mt-4">
+                    <h3 class="text-3xl font-bold text-gray-900 dark:text-white">{{ $myServices->count() }}</h3>
+                    <p class="text-sm text-gray-500 dark:text-gray-400 mt-1">Work Queue</p>
+                </div>
+            </a>
+        </div>
+        @endif
+
+        @if($userRole === 'Administrator')
+        <!-- Administrator: Charts & Activity Row -->
         <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Popular Service Types (flip card) -->
-            <div class="bg-[#fafafa] dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-300" x-data="{ flipped: false }">
+            <div class="ui-panel hover:shadow-card-hover transition-shadow duration-300" x-data="{ flipped: false }">
                 <div class="flex items-center justify-between mb-4">
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white">Popular Service Types</h3>
                     <!-- Flip toggle button -->
@@ -154,7 +402,7 @@
             </div>
 
             <!-- Recent Activity -->
-            <div class="bg-[#fafafa] dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-300 flex flex-col gap-6">
+            <div class="ui-panel hover:shadow-card-hover transition-shadow duration-300 flex flex-col gap-6">
                 <div class="h-[48px] flex items-center justify-between">
                     <div class="flex flex-col gap-[4px]">
                         <h3 class="text-[18px] leading-[28px] font-bold text-[#101828] dark:text-white">Recent Activity</h3>
@@ -214,10 +462,9 @@
                 </div>
             </div>
         </div>
-        </div>
 
         <!-- Parts Usage Analytics -->
-        <div class="bg-[#fafafa] dark:bg-slate-800 p-6 rounded-xl border border-gray-200 dark:border-slate-700 shadow-sm hover:shadow-md transition-all duration-300 mt-6">
+        <div class="ui-panel hover:shadow-card-hover transition-shadow duration-300 mt-6">
             <div class="flex items-center justify-between mb-4">
                 <div>
                     <h3 class="text-lg font-bold text-gray-900 dark:text-white">Most Used Parts</h3>
@@ -232,40 +479,167 @@
             </div>
         </div>
 
-        <!-- Additional Dashboard Information -->
-        <div class="grid grid-cols-1 lg:grid-cols-1 gap-6 mt-6">
+        <!-- Recent Transactions -->
+        <div class="ui-panel flex flex-col gap-4 hover:shadow-card-hover transition-shadow duration-300 mt-6">
+            <div class="flex items-center justify-between">
+                <div>
+                    <h3 class="text-lg font-bold text-gray-900 dark:text-white">Recent Transactions</h3>
+                    <p class="text-xs text-gray-500 dark:text-gray-400">Latest paid and unpaid invoices</p>
+                </div>
+                @if(Route::has('transactions.index'))
+                <a href="{{ route('transactions.index') }}" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">View All</a>
+                @endif
+            </div>
+            <div class="overflow-x-auto">
+                <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700/50">
+                    <thead>
+                        <tr>
+                            <th class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider py-2">Customer</th>
+                            <th class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider py-2">Amount</th>
+                            <th class="text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider py-2">Status</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-200 dark:divide-slate-700/50">
+                        @forelse($recentTransactions ?? collect() as $transaction)
+                        <tr>
+                            <td class="py-3 text-sm font-medium text-gray-900 dark:text-white">{{ optional($transaction->report)->customer_name ?? 'Unknown' }}</td>
+                            <td class="py-3 text-sm text-gray-900 dark:text-gray-300">₱{{ number_format($transaction->amountPaidThisPayment(), 2) }}</td>
+                            <td class="py-3 text-sm text-right">
+                                @php
+                                    $statusClass = match ($transaction->payment_status) {
+                                        'Paid' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border dark:border-green-800/50',
+                                        'Unpaid' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border dark:border-red-800/50',
+                                        'Partial' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border dark:border-yellow-800/50',
+                                        default => 'bg-gray-100 text-gray-800 dark:bg-slate-700 dark:text-slate-300 border dark:border-slate-600',
+                                    };
+                                @endphp
+                                <span class="px-2 py-1 text-[10px] font-semibold rounded-full {{ $statusClass }}">{{ $transaction->payment_status }}</span>
+                            </td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="3" class="py-4 text-center text-sm text-gray-500 dark:text-gray-400">No recent transactions.</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        @elseif($userRole === 'Secretary')
+        <!-- Secretary: Recent Customers & Services -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- Recent Customers -->
+            <div class="ui-panel hover:shadow-card-hover transition-shadow duration-300">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Recent Customers</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Latest customer registrations</p>
+                    </div>
+                    <a href="{{ route('customers.index') }}" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">View All</a>
+                </div>
+                <div class="space-y-3">
+                    @forelse($recentCustomers as $customer)
+                    <div class="flex items-center justify-between p-3 bg-white dark:bg-slate-700/50 rounded-lg">
+                        <div class="flex items-center">
+                            <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-sm mr-3">
+                                {{ substr($customer->first_name, 0, 1) }}{{ substr($customer->last_name, 0, 1) }}
+                            </div>
+                            <div>
+                                <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $customer->first_name }} {{ $customer->last_name }}</p>
+                                <p class="text-xs text-gray-500 dark:text-gray-400">{{ $customer->phone_no }}</p>
+                            </div>
+                        </div>
+                        <span class="text-xs text-gray-400 dark:text-gray-500">{{ $customer->created_at->diffForHumans() }}</span>
+                    </div>
+                    @empty
+                    <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No recent customers.</p>
+                    @endforelse
+                </div>
+            </div>
+
+            <!-- Pending Services -->
+            <div class="ui-panel hover:shadow-card-hover transition-shadow duration-300">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Pending Services</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Services awaiting processing</p>
+                    </div>
+                    <a href="{{ route('services.index', ['status' => 'Pending']) }}" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">View All</a>
+                </div>
+                <div class="space-y-3">
+                    @forelse($pendingServicesList as $service)
+                    <div class="flex items-center justify-between p-3 bg-white dark:bg-slate-700/50 rounded-lg">
+                        <div>
+                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $service->customer_name }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ optional($service->appliance)->product ?? 'N/A' }}</p>
+                        </div>
+                        <span class="text-xs text-gray-400 dark:text-gray-500">{{ $service->date_in ? $service->date_in->format('M d') : 'N/A' }}</span>
+                    </div>
+                    @empty
+                    <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No pending services.</p>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+
+        <!-- Low Stock Alert -->
+        @if($lowStockParts->count() > 0)
+        <div class="bg-red-50 dark:bg-red-900/20 p-6 rounded-xl border border-red-200 dark:border-red-800 shadow-sm mt-6">
+            <div class="flex items-center justify-between mb-4">
+                <div>
+                    <h3 class="text-lg font-bold text-red-900 dark:text-red-400">Low Stock Alert</h3>
+                    <p class="text-xs text-red-700 dark:text-red-300">Parts that need reordering</p>
+                </div>
+                <a href="{{ route('inventory.index', ['status' => 'Low Stock']) }}" class="text-xs font-semibold text-red-700 dark:text-red-400 hover:underline">View Inventory</a>
+            </div>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                @foreach($lowStockParts as $part)
+                <div class="flex items-center justify-between p-3 bg-white dark:bg-slate-800 rounded-lg border border-red-200 dark:border-red-800">
+                    <div>
+                        <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $part->name }}</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ $part->part_no }}</p>
+                    </div>
+                    <span class="text-sm font-bold text-red-600 dark:text-red-400">{{ $part->quantity_stock }} left</span>
+                </div>
+                @endforeach
+            </div>
+        </div>
+        @endif
+
+        @elseif($userRole === 'Cashier')
+        <!-- Cashier: Recent Transactions & Pending Invoices -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
             <!-- Recent Transactions -->
-            <div class="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-gray-100 dark:border-slate-700 p-6 flex flex-col gap-4 hover:shadow-md transition-all duration-300">
-                <div class="flex items-center justify-between">
+            <div class="ui-panel hover:shadow-card-hover transition-shadow duration-300">
+                <div class="flex items-center justify-between mb-4">
                     <div>
                         <h3 class="text-lg font-bold text-gray-900 dark:text-white">Recent Transactions</h3>
-                        <p class="text-xs text-gray-500 dark:text-gray-400">Latest paid and unpaid invoices</p>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Latest payments received</p>
                     </div>
-                    @if(Route::has('transactions.index'))
                     <a href="{{ route('transactions.index') }}" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">View All</a>
-                    @endif
                 </div>
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200 dark:divide-slate-700/50">
                         <thead>
                             <tr>
                                 <th class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider py-2">Customer</th>
-                                <th class="text-left text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider py-2">Amount</th>
+                                <th class="text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider py-2">Amount</th>
                                 <th class="text-right text-xs font-medium text-gray-500 dark:text-gray-400 uppercase tracking-wider py-2">Status</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200 dark:divide-slate-700/50">
-                            @forelse($recentTransactions ?? collect() as $transaction)
+                            @forelse($recentTransactions as $transaction)
                             <tr>
-                                <td class="py-3 text-sm font-medium text-gray-900 dark:text-white">{{ optional($transaction->report)->customer_name ?? 'Unknown' }}</td>
-                                <td class="py-3 text-sm text-gray-900 dark:text-gray-300">₱{{ number_format($transaction->total_amount, 2) }}</td>
-                                <td class="py-3 text-sm text-right">
+                                <td class="py-2 text-sm font-medium text-gray-900 dark:text-white">{{ optional($transaction->report)->customer_name ?? 'Unknown' }}</td>
+                                <td class="py-2 text-sm text-right text-gray-900 dark:text-gray-300">₱{{ number_format($transaction->amountPaidThisPayment(), 2) }}</td>
+                                <td class="py-2 text-sm text-right">
                                     @php
                                         $statusClass = match ($transaction->payment_status) {
-                                            'Paid' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400 border dark:border-green-800/50',
-                                            'Unpaid' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400 border dark:border-red-800/50',
-                                            'Partial' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400 border dark:border-yellow-800/50',
-                                            default => 'bg-gray-100 text-gray-800 dark:bg-slate-700 dark:text-slate-300 border dark:border-slate-600',
+                                            'Paid' => 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400',
+                                            'Unpaid' => 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400',
+                                            'Partial' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+                                            default => 'bg-gray-100 text-gray-800 dark:bg-slate-700 dark:text-slate-300',
                                         };
                                     @endphp
                                     <span class="px-2 py-1 text-[10px] font-semibold rounded-full {{ $statusClass }}">{{ $transaction->payment_status }}</span>
@@ -280,10 +654,97 @@
                     </table>
                 </div>
             </div>
+
+            <!-- Pending Invoices -->
+            <div class="ui-panel hover:shadow-card-hover transition-shadow duration-300">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Ready to Bill</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Completed services without payments</p>
+                    </div>
+                    <a href="{{ route('services.index', ['status' => 'Completed']) }}" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">View All</a>
+                </div>
+                <div class="space-y-3">
+                    @forelse($pendingInvoices as $service)
+                    <div class="flex items-center justify-between p-3 bg-white dark:bg-slate-700/50 rounded-lg">
+                        <div>
+                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $service->customer_name }}</p>
+                            <p class="text-xs text-gray-500 dark:text-gray-400">{{ optional($service->appliance)->product ?? 'N/A' }}</p>
+                        </div>
+                        <a href="{{ route('transactions.create', ['report_id' => $service->id]) }}" class="text-xs font-semibold text-green-600 dark:text-green-400 hover:underline">Create Invoice</a>
+                    </div>
+                    @empty
+                    <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No pending invoices.</p>
+                    @endforelse
+                </div>
+            </div>
         </div>
+
+        @elseif($userRole === 'Technician')
+        <!-- Technician: My Services & Comments -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+            <!-- My Services -->
+            <div class="ui-panel hover:shadow-card-hover transition-shadow duration-300">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">My Work Queue</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Services assigned to me</p>
+                    </div>
+                    <a href="{{ route('services.index') }}" class="text-xs font-semibold text-blue-600 dark:text-blue-400 hover:underline">View All</a>
+                </div>
+                <div class="space-y-3">
+                    @forelse($myServices as $service)
+                    <div class="p-3 bg-white dark:bg-slate-700/50 rounded-lg border-l-4 border-blue-500">
+                        <div class="flex items-center justify-between mb-2">
+                            <p class="text-sm font-medium text-gray-900 dark:text-white">{{ $service->customer_name }}</p>
+                            @php
+                                $statusClass = match($service->status) {
+                                    'In Progress' => 'bg-blue-100 text-blue-800 dark:bg-blue-900/30 dark:text-blue-400',
+                                    'Under Repair' => 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400',
+                                    'Waiting for Parts' => 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400',
+                                    default => 'bg-gray-100 text-gray-800 dark:bg-slate-700 dark:text-slate-300',
+                                };
+                            @endphp
+                            <span class="px-2 py-1 text-[10px] font-semibold rounded-full {{ $statusClass }}">{{ $service->status }}</span>
+                        </div>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">{{ optional($service->appliance)->product ?? 'N/A' }}</p>
+                        <a href="{{ route('services.show', $service) }}" class="text-xs text-blue-600 dark:text-blue-400 hover:underline mt-2 inline-block">View Details</a>
+                    </div>
+                    @empty
+                    <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No active services assigned.</p>
+                    @endforelse
+                </div>
+            </div>
+
+            <!-- Recent Comments -->
+            <div class="ui-panel hover:shadow-card-hover transition-shadow duration-300">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h3 class="text-lg font-bold text-gray-900 dark:text-white">Recent Comments</h3>
+                        <p class="text-xs text-gray-500 dark:text-gray-400">Latest updates on my services</p>
+                    </div>
+                </div>
+                <div class="space-y-3 max-h-80 overflow-y-auto">
+                    @forelse($recentComments as $comment)
+                    <div class="p-3 bg-white dark:bg-slate-700/50 rounded-lg">
+                        <div class="flex items-center justify-between mb-1">
+                            <p class="text-xs font-medium text-gray-900 dark:text-white">{{ $comment->created_by_name ?? optional($comment->user)->name ?? 'Unknown' }}</p>
+                            <span class="text-xs text-gray-400 dark:text-gray-500">{{ $comment->created_at->diffForHumans() }}</span>
+                        </div>
+                        <p class="text-xs text-gray-600 dark:text-gray-300">{{ $comment->comment_text }}</p>
+                        <p class="text-xs text-gray-400 dark:text-gray-500 mt-1">Service #{{ $comment->report_id }}</p>
+                    </div>
+                    @empty
+                    <p class="text-sm text-gray-500 dark:text-gray-400 text-center py-4">No recent comments.</p>
+                    @endforelse
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
 
-    <!-- Chart.js Script -->
+    @if($userRole === 'Administrator')
+    <!-- Chart.js Script (Only for Administrator) -->
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script>
         document.addEventListener('DOMContentLoaded', function() {
@@ -486,4 +947,5 @@
             }
         });
     </script>
+    @endif
 </x-app-layout>

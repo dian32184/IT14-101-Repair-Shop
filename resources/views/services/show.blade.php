@@ -73,6 +73,20 @@
                                 {{ $service->problem_desc }}
                             </dd>
                         </div>
+                        @if($service->appliance && $service->appliance->problems && $service->appliance->problems->count() > 0)
+                            <div class="sm:col-span-2">
+                                <dt class="text-sm font-medium text-gray-500 dark:text-slate-400">Appliance Reported Problems</dt>
+                                <dd class="mt-1 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-slate-700/50 p-3 rounded-lg border border-gray-100 dark:border-slate-700">
+                                    @foreach($service->appliance->problems as $problem)
+                                        @if($problem->common_problem)
+                                            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded mr-1 mb-1">{{ $problem->common_problem->problem_name }}</span>
+                                        @elseif($problem->other_problem)
+                                            <span class="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded mr-1 mb-1">Other: {{ $problem->other_problem }}</span>
+                                        @endif
+                                    @endforeach
+                                </dd>
+                            </div>
+                        @endif
                         @if($service->findings)
                             <div class="sm:col-span-2">
                                 <dt class="text-sm font-medium text-gray-500 dark:text-slate-400">Findings</dt>
@@ -186,11 +200,18 @@
                         <div class="sm:col-span-2">
                             <dt class="text-sm font-medium text-gray-500 dark:text-slate-400">Service Types</dt>
                             <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                                @php
+                                    $customMap = collect($service->details->custom_services ?? [])->keyBy('name');
+                                @endphp
                                 @if($service->details && $service->details->service_types)
                                     @foreach($service->details->service_types as $type)
+                                        @php $custom = $customMap->get($type); @endphp
                                         <span
-                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-blue-100 text-blue-800 mr-2">
+                                            class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium mr-2 mb-1 {{ $custom ? 'bg-violet-100 text-violet-800' : 'bg-blue-100 text-blue-800' }}">
                                             {{ $type }}
+                                            @if($custom)
+                                                <span class="ml-1 opacity-80">· ₱{{ number_format((float) $custom['price'], 2) }}</span>
+                                            @endif
                                         </span>
                                     @endforeach
                                 @else
@@ -361,11 +382,20 @@
                         <h3 class="text-lg font-medium text-gray-900 dark:text-white">Payments</h3>
                         @if(in_array(auth()->user()->role, ['Administrator', 'Cashier']))
                             @if($service->status === 'Completed')
-                                @if($service->transactions->count() == 0)
+                                @php
+                                    $billTotal = (float) ($service->details->total_amount ?? 0);
+                                    $totalPaid = $service->transactions->sum(fn ($t) => $t->amountPaidThisPayment());
+                                    $remainingBal = $billTotal > 0 ? max(0, $billTotal - $totalPaid) : null;
+                                    $canAddPayment = $service->transactions->where('payment_status', 'Paid')->count() === 0
+                                        && ($service->transactions->count() === 0 || ($remainingBal !== null && $remainingBal > 0));
+                                @endphp
+                                @if($canAddPayment)
                                     <a href="{{ route('transactions.create', ['report_id' => $service->id]) }}"
                                         class="text-xs font-medium text-blue-600 dark:text-blue-400 hover:text-blue-500 hover:underline">
                                         + Add Payment
                                     </a>
+                                @elseif($remainingBal !== null && $remainingBal <= 0 && $service->transactions->count() > 0)
+                                    <span class="text-xs font-medium text-green-600 dark:text-green-400">Fully Paid</span>
                                 @endif
                             @else
                                 <span
@@ -389,10 +419,10 @@
                                     @foreach($service->transactions as $transaction)
                                         <tr>
                                             <td class="px-4 py-2 text-sm text-gray-900 dark:text-white">
-                                                ₱{{ number_format($transaction->total_amount, 2) }}</td>
+                                                ₱{{ number_format($transaction->amountPaidThisPayment(), 2) }}</td>
                                             <td class="px-4 py-2 text-right">
                                                 <span
-                                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $transaction->payment_status == 'Paid' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800' }}">
+                                                    class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $transaction->payment_status == 'Paid' ? 'bg-green-100 text-green-800' : ($transaction->payment_status == 'Partial' ? 'bg-yellow-100 text-yellow-800' : 'bg-red-100 text-red-800') }}">
                                                     {{ $transaction->payment_status }}
                                                 </span>
                                             </td>

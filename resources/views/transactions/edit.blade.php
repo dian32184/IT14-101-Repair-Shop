@@ -113,7 +113,23 @@
                                 @enderror
                             </div>
 
-                            <!-- Partial Amount -->
+                            <!-- Amount Paid This Payment -->
+                            <div x-show="payment_status === 'Partial' || payment_status === 'Paid'" x-cloak>
+                                <label for="amount_paid" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Amount Paid (This Payment)</label>
+                                <div class="mt-1 relative rounded-md shadow-sm">
+                                    <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                        <span class="text-gray-500 dark:text-slate-400 sm:text-sm">₱</span>
+                                    </div>
+                                    <input type="number" name="amount_paid" id="amount_paid" step="0.01"
+                                        class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-7 sm:text-sm border-gray-300 dark:border-slate-500 rounded-lg"
+                                        placeholder="0.00" value="{{ old('amount_paid', $transaction->amount_paid ?? $transaction->partial_payment_amount ?? $transaction->amountPaidThisPayment()) }}">
+                                </div>
+                                @error('amount_paid')
+                                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                @enderror
+                            </div>
+
+                            <!-- Partial Amount (legacy field, kept in sync) -->
                             <div x-show="payment_status === 'Partial'" x-cloak>
                                 <label for="partial_payment_amount" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Partial Amount Paid</label>
                                 <div class="mt-1 relative rounded-md shadow-sm">

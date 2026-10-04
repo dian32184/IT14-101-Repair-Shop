@@ -35,7 +35,6 @@
         <div class="flex items-center justify-between">
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Add New Customer</h2>
             <a href="{{ route('customers.index') }}"
-                @click="checkDirty() ? $dispatch('open-confirm', { title: 'Unsaved Changes', message: 'You have unsaved changes. Are you sure you want to leave?', confirmText: 'Leave', cancelText: 'Stay', variant: 'warning', action: () => window.location.href = '{{ route('customers.index') }}' }) : window.location.href = '{{ route('customers.index') }}'"
                 class="text-sm font-medium text-gray-500 hover:text-gray-900 dark:text-white flex items-center transition-colors">
                 <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
@@ -148,6 +147,125 @@
                                     {{ $message }}
                                 </p>
                             @enderror
+                        </div>
+
+                        <!-- Appliance Information -->
+                        <div class="md:col-span-2 border-t border-gray-200 dark:border-slate-700 pt-6" x-data="{
+                            selectedApplianceTypeId: '{{ old('appliance_type_id') }}',
+                            get commonProblems() {
+                                if (!this.selectedApplianceTypeId) return [];
+                                const type = {{ Js::from($applianceTypes) }}.find(t => t.id == this.selectedApplianceTypeId);
+                                return type ? type.common_problems : [];
+                            }
+                        }">
+                            <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Appliance Information</h3>
+                            
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                                <!-- Appliance Type -->
+                                <div>
+                                    <label for="appliance_type_id" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Appliance Type</label>
+                                    <select name="appliance_type_id" id="appliance_type_id" x-model="selectedApplianceTypeId"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                        <option value="">-- Select Appliance Type --</option>
+                                        @foreach($applianceTypes as $type)
+                                        <option value="{{ $type->id }}">{{ $type->name }}</option>
+                                        @endforeach
+                                    </select>
+                                    @error('appliance_type_id')
+                                        <p class="mt-1 text-sm text-red-600 flex items-center">
+                                            <svg class="w-4 h-4 mr-1" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+                                            </svg>
+                                            {{ $message }}
+                                        </p>
+                                    @enderror
+                                </div>
+
+                                <!-- Product -->
+                                <div>
+                                    <label for="appliance_product" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Product</label>
+                                    <input type="text" name="appliance_product" id="appliance_product" value="{{ old('appliance_product') }}"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                        placeholder="e.g. Air Conditioner">
+                                </div>
+
+                                <!-- Brand -->
+                                <div>
+                                    <label for="appliance_brand" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Brand</label>
+                                    <input type="text" name="appliance_brand" id="appliance_brand" value="{{ old('appliance_brand') }}"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                        placeholder="e.g. Samsung">
+                                </div>
+
+                                <!-- Model Number -->
+                                <div>
+                                    <label for="appliance_model" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Model Number</label>
+                                    <input type="text" name="appliance_model" id="appliance_model" value="{{ old('appliance_model') }}"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                        placeholder="e.g. AR12TXFYAWK">
+                                </div>
+
+                                <!-- Serial Number -->
+                                <div>
+                                    <label for="appliance_serial" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Serial Number</label>
+                                    <input type="text" name="appliance_serial" id="appliance_serial" value="{{ old('appliance_serial') }}"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                        placeholder="e.g. 1234567890">
+                                </div>
+
+                                <!-- Dealer -->
+                                <div>
+                                    <label for="appliance_dealer" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Dealer (Optional)</label>
+                                    <input type="text" name="appliance_dealer" id="appliance_dealer" value="{{ old('appliance_dealer') }}"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                        placeholder="e.g. SM Appliance">
+                                </div>
+
+                                <!-- Purchase Date -->
+                                <div>
+                                    <label for="appliance_purchase_date" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Purchase Date</label>
+                                    <input type="date" name="appliance_purchase_date" id="appliance_purchase_date" value="{{ old('appliance_purchase_date') }}"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                </div>
+
+                                <!-- Warranty End -->
+                                <div>
+                                    <label for="appliance_warranty" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Warranty End Date</label>
+                                    <input type="date" name="appliance_warranty" id="appliance_warranty" value="{{ old('appliance_warranty') }}"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                </div>
+
+                                <!-- Common Problems -->
+                                <div class="md:col-span-2" x-show="selectedApplianceTypeId">
+                                    <label class="block text-sm font-medium text-gray-700 dark:text-slate-200 mb-2">Common Problems Repaired</label>
+                                    <p class="text-xs text-gray-500 dark:text-slate-400 mb-3">Select all problems that apply to this appliance</p>
+                                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                        <template x-for="problem in commonProblems" :key="problem.id">
+                                            <label class="flex items-start space-x-3 p-3 border border-gray-200 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors">
+                                                <input type="checkbox" name="common_problems[]" :value="problem.id"
+                                                    class="mt-0.5 rounded border-gray-300 dark:border-slate-500 text-blue-600 dark:text-blue-400 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50"
+                                                    {{ collect(old('common_problems'))->contains('problem.id') ? 'checked' : '' }}>
+                                                <span class="text-sm text-gray-700 dark:text-slate-200" x-text="problem.problem_name"></span>
+                                            </label>
+                                        </template>
+                                    </div>
+                                    @error('common_problems')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <!-- Other Problem -->
+                                <div class="md:col-span-2" x-show="selectedApplianceTypeId">
+                                    <label for="other_problem" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Other Problem (if not listed above)</label>
+                                    <textarea id="other_problem" name="other_problem" rows="2"
+                                        class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                        placeholder="Describe the problem if it's not in the list above">{{ old('other_problem') }}</textarea>
+                                    @error('other_problem')
+                                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                    @enderror
+                                </div>
+                            </div>
                         </div>
 
                         <!-- Address with Map Search -->
@@ -266,7 +384,6 @@
 
                     <div class="flex justify-end space-x-3 pt-6 border-t border-gray-100 dark:border-slate-700">
                         <a href="{{ route('customers.index') }}"
-                            @click="checkDirty() ? $dispatch('open-confirm', { title: 'Unsaved Changes', message: 'You have unsaved changes. Are you sure you want to leave?', confirmText: 'Leave', cancelText: 'Stay', variant: 'warning', action: () => window.location.href = '{{ route('customers.index') }}' }) : window.location.href = '{{ route('customers.index') }}'"
                             class="px-4 py-2 border border-gray-300 dark:border-slate-500 rounded-lg text-sm font-medium text-gray-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors">
                             Cancel
                         </a>

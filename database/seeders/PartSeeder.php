@@ -133,7 +133,13 @@ class PartSeeder extends Seeder
         ];
 
         foreach ($parts as $part) {
-            Part::create($part);
+            // Check if part already exists to prevent duplicates
+            if (!Part::where('part_no', $part['part_no'])->exists()) {
+                Part::create($part);
+                $this->command->info("Created part: {$part['part_no']} - {$part['name']}");
+            } else {
+                $this->command->warn("Part already exists: {$part['part_no']} - {$part['name']}");
+            }
         }
     }
 }

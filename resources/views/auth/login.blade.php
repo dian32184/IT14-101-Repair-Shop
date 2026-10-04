@@ -8,20 +8,19 @@
 
     <title>{{ config('app.name', '101 Repair Service') }} - Login</title>
 
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700&display=swap" rel="stylesheet" />
 
-    <!-- Tailwind CSS (via CDN for simplicity as existing auth views do) -->
     <script src="https://unpkg.com/@tailwindcss/browser@4"></script>
-
-    <!-- Alpine JS -->
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
 
     <style>
         body {
-            font-family: 'Inter', sans-serif;
-            background: linear-gradient(135deg, #e0f2fe 0%, #f0f9ff 50%, #e0f2fe 100%);
+            font-family: 'Plus Jakarta Sans', 'Inter', sans-serif;
+            background:
+                radial-gradient(1200px 500px at 10% -10%, rgba(59, 130, 246, 0.18), transparent 55%),
+                radial-gradient(900px 400px at 100% 0%, rgba(14, 165, 233, 0.12), transparent 50%),
+                linear-gradient(180deg, #f8fbff 0%, #eef4fb 100%);
             background-attachment: fixed;
         }
 
@@ -29,107 +28,86 @@
             display: none !important;
         }
 
-        /* Hide default browser reveal icon for password fields (e.g., in Edge) */
         input[type="password"]::-ms-reveal,
         input[type="password"]::-ms-clear {
             display: none;
         }
 
-        .login-bg {
-            background: linear-gradient(135deg, #f8fafc 0%, #ffffff 100%);
-        }
-
         .fade-in {
-            animation: fadeIn 0.8s ease-in-out;
+            animation: fadeIn 0.6s ease-out;
         }
 
         @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(20px); }
+            from { opacity: 0; transform: translateY(12px); }
             to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Subtle background pattern */
-        .bg-pattern::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background-image: radial-gradient(circle at 25% 25%, rgba(59, 130, 246, 0.05) 0%, transparent 50%),
-                              radial-gradient(circle at 75% 75%, rgba(147, 197, 253, 0.05) 0%, transparent 50%);
-            pointer-events: none;
         }
     </style>
 
     <script>
-        // Force light mode for login page
         document.documentElement.classList.remove('dark');
     </script>
 </head>
 
-<body class="font-sans antialiased text-gray-900 flex items-center justify-center min-h-screen p-4 sm:p-8 transition-colors duration-200 bg-pattern">
+<body class="antialiased text-slate-900 flex items-center justify-center min-h-screen p-4 sm:p-8">
 
-    <div
-        class="w-full max-w-5xl bg-white rounded-2xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px] transition-colors duration-200 hover:shadow-3xl">
+    <div class="w-full max-w-5xl bg-white rounded-3xl shadow-[0_24px_60px_-20px_rgba(15,23,42,0.25)] overflow-hidden flex flex-col md:flex-row min-h-[560px] ring-1 ring-slate-200/80 fade-in">
 
         <!-- Left Pane: Login Form -->
-        <div class="w-full md:w-1/2 p-8 sm:p-12 lg:p-16 flex flex-col justify-center login-bg relative transition-colors duration-200 fade-in">
+        <div class="w-full md:w-1/2 p-8 sm:p-12 lg:p-14 flex flex-col justify-center bg-white">
+            <div class="max-w-md w-full mx-auto">
+                <div class="mb-2 text-center">
 
-            <div class="max-w-md w-full mx-auto fade-in">
-                <!-- Logo & Header -->
-                <div class="text-center mb-10">
-                    <!-- Light Mode Logo (Blue) -->
-                    <img src="{{ asset('img/repairservicelogoblue.png') }}" alt="101 Repair Shop Logo"
-                        class="h-32 md:h-40 mx-auto object-contain mb-4 block">
-                    <!-- Dark Mode Logo (Gray/Red) -->
-                    <img src="{{ asset('img/repairservicelogogray.png') }}" alt="101 Repair Shop Logo"
-                        class="h-32 md:h-40 mx-auto object-contain mb-4 hidden">
-                    <h2 class="text-2xl font-bold text-gray-900 leading-tight tracking-tight">101 Repair Service</h2>
-                    <p class="mt-2 text-sm text-gray-500 font-medium tracking-wide">Sign in to your account</p>
-                </div>
+    <img src="{{ asset('img/repairservicelogoblue.png') }}"
+        alt="101 Repair Shop Logo"
+        class="h-32 md:h-38 object-contain mx-auto -mb-2">
 
-                <!-- Session Status -->
+    <h2 class="text-2xl font-bold text-slate-900 tracking-tight">
+        Sign in
+    </h2>
+
+    <p class="mt-1 text-sm text-slate-500">
+        Access the 101 Repair Service workspace
+    </p>
+
+</div>
+
+
                 <x-auth-session-status class="mb-4" :status="session('status')" />
 
-                <form method="POST" action="{{ route('login') }}" class="space-y-6">
+                <form method="POST" action="{{ route('login') }}" class="space-y-5">
                     @csrf
 
-                    <!-- Email Address -->
                     <div>
-                        <label for="email" class="block text-sm font-medium text-gray-700 mb-1">Email</label>
+                        <label for="email" class="block text-sm font-medium text-slate-700 mb-1.5">Email</label>
                         <div class="relative">
-                            <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                                <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <div class="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none">
+                                <svg class="h-5 w-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 12a4 4 0 10-8 0 4 4 0 008 0zm0 0v1.5a2.5 2.5 0 005 0V12a9 9 0 10-9 9m4.5-1.206a8.959 8.959 0 01-4.5 1.207"></path>
                                 </svg>
                             </div>
                             <input id="email" type="email" name="email" value="{{ old('email') }}" required autofocus
-                                class="block w-full pl-10 pr-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 sm:text-sm placeholder-gray-400 transition-shadow"
+                                class="block w-full pl-11 pr-4 py-3 border border-slate-200 rounded-xl bg-slate-50/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 sm:text-sm placeholder-slate-400 transition"
                                 placeholder="Enter your email">
                         </div>
                         <x-input-error :messages="$errors->get('email')"
                             class="mt-2 text-red-600 text-xs font-medium" />
                     </div>
 
-                    <!-- Password -->
                     <div x-data="{ showPassword: false }">
-                        <label for="password" class="block text-sm font-medium text-gray-700 mb-1">Password</label>
+                        <label for="password" class="block text-sm font-medium text-slate-700 mb-1.5">Password</label>
                         <div class="relative">
                             <input id="password" :type="showPassword ? 'text' : 'password'" name="password" required
                                 autocomplete="current-password"
-                                class="block w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 sm:text-sm placeholder-gray-400 transition-shadow pr-10"
+                                class="block w-full px-4 py-3 border border-slate-200 rounded-xl bg-slate-50/80 focus:bg-white focus:outline-none focus:ring-2 focus:ring-blue-600 focus:border-blue-600 sm:text-sm placeholder-slate-400 transition pr-11"
                                 placeholder="Enter your password">
                             <button type="button" @click="showPassword = !showPassword"
-                                class="absolute inset-y-0 right-0 pr-3 flex items-center text-gray-400 hover:text-gray-600 focus:outline-none">
-                                <!-- Eye open (password hidden) -->
+                                class="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-600 focus:outline-none">
                                 <svg x-show="!showPassword" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"></path>
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"></path>
                                 </svg>
-                                <!-- Eye off (password shown) -->
                                 <svg x-show="showPassword" class="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="display:none;">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
                                         d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l3.59 3.59m0 0A9.953 9.953 0 0112 5c4.478 0 8.268 2.943 9.543 7a10.025 10.025 0 01-4.132 5.411m0 0L21 21"></path>
@@ -140,13 +118,12 @@
                             class="mt-2 text-red-600 text-xs font-medium" />
                     </div>
 
-                    <!-- Remember Me & Forgot Password -->
-                    <div class="flex items-center justify-between pt-2">
+                    <div class="flex items-center justify-between pt-1">
                         <div class="flex items-center">
                             <input id="remember_me" type="checkbox" name="remember"
-                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-gray-300 rounded cursor-pointer">
+                                class="h-4 w-4 text-blue-600 focus:ring-blue-500 border-slate-300 rounded cursor-pointer">
                             <label for="remember_me"
-                                class="ml-2 block text-sm text-gray-600 cursor-pointer select-none">Remember me</label>
+                                class="ml-2 block text-sm text-slate-600 cursor-pointer select-none">Remember me</label>
                         </div>
 
                         @if (Route::has('password.request'))
@@ -157,10 +134,9 @@
                         @endif
                     </div>
 
-                    <!-- Submit Button -->
-                    <div class="pt-2">
+                    <div class="pt-1">
                         <button type="submit"
-                            class="w-full flex justify-center py-3.5 px-4 border border-transparent rounded-lg shadow-lg text-sm font-bold text-white bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 transition-all duration-200 transform hover:scale-105">
+                            class="w-full flex justify-center py-3 px-4 rounded-xl text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 shadow-lg shadow-blue-600/25 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-600 transition-colors">
                             Sign in
                         </button>
                     </div>
@@ -168,9 +144,9 @@
             </div>
         </div>
 
-        <!-- Right Pane: Image Carousel & Quote -->
-        <div class="w-full md:w-1/2 relative hidden md:block" x-data="{ 
-                activeSlide: 1, 
+        <!-- Right Pane: Image Carousel -->
+        <div class="w-full md:w-1/2 relative hidden md:block" x-data="{
+                activeSlide: 1,
                 slides: [
                     '{{ asset('img/slider/hero-1.jpg') }}',
                     '{{ asset('img/slider/hero-2.jpg') }}'
@@ -182,28 +158,20 @@
                 }
              }">
 
-            <!-- Background Images -->
             <template x-for="(slide, index) in slides" :key="index">
                 <img :src="slide" alt="Repair Shop Work Area"
                     class="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000 ease-in-out"
                     :class="activeSlide === index + 1 ? 'opacity-100' : 'opacity-0'" x-cloak>
             </template>
 
-            <!-- Dark Blue Overlay with Gradient -->
-            <div
-                class="absolute inset-0 bg-gradient-to-t from-[#1e3a8a] via-[#1e3a8a]/80 to-[#1e3a8a]/40 z-10 transition-colors duration-500">
-            </div>
+            <div class="absolute inset-0 bg-gradient-to-t from-[#0b1220] via-[#1e3a8a]/75 to-[#1e3a8a]/35 z-10"></div>
 
-            <!-- Content Container -->
-            <div class="absolute inset-0 flex flex-col justify-center p-12 text-white z-20">
-                <!-- Welcome Text -->
-                <div class="text-center mx-auto max-w-lg py-8">
-                    <h3 class="text-3xl font-bold mb-2">Welcome Back!</h3>
-                    <p class="text-white/90 text-lg">Sign in to manage your repair services efficiently.</p>
-                </div>
+            <div class="absolute inset-0 flex flex-col justify-end p-10 text-white z-20">
+                <p class="text-xs font-semibold uppercase tracking-[0.2em] text-blue-200 mb-2">101 Repair Service</p>
+                <h3 class="text-3xl font-bold mb-2 leading-tight">Welcome back</h3>
+                <p class="text-white/85 text-base max-w-sm">Manage customers, jobs, parts, and payments from one workspace.</p>
 
-                <!-- Slide Indicators -->
-                <div class="mt-auto flex justify-center w-full pb-4">
+                <div class="mt-6 flex justify-start w-full pb-1">
                     <div class="flex space-x-2">
                         <template x-for="i in slides.length">
                             <button @click="activeSlide = i"

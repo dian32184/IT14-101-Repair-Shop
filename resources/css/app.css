@@ -3,20 +3,98 @@
 @tailwind utilities;
 
 @layer base {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    body {
+        @apply font-sans antialiased;
+    }
+
     .dark input:not([type='checkbox']):not([type='radio']),
     .dark textarea,
     .dark select {
         @apply bg-slate-800 border-slate-600 text-slate-100 placeholder-slate-400;
     }
-    
+
     .dark input:focus:not([type='checkbox']):not([type='radio']),
     .dark textarea:focus,
     .dark select:focus {
         @apply ring-blue-500 border-blue-500;
     }
-    
+
     .dark input[type='checkbox'],
     .dark input[type='radio'] {
         @apply border-slate-500 bg-slate-800;
     }
+}
+
+@layer components {
+    .ui-stat-card {
+        @apply block bg-white dark:bg-slate-800/80 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-card flex flex-col justify-between hover:shadow-card-hover hover:-translate-y-0.5 hover:border-blue-200 dark:hover:border-blue-800/60 transition-all duration-300;
+    }
+
+    .ui-panel {
+        @apply bg-white dark:bg-slate-800/80 p-6 rounded-2xl border border-slate-200/80 dark:border-slate-700/80 shadow-card;
+    }
+
+    .btn-primary {
+        @apply inline-flex items-center px-4 py-2.5 rounded-xl shadow-sm text-sm font-semibold text-white bg-blue-600 hover:bg-blue-700 dark:bg-blue-600 dark:hover:bg-blue-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 dark:focus:ring-offset-slate-900 transition-colors;
+    }
+
+    .btn-secondary {
+        @apply inline-flex items-center px-4 py-2.5 rounded-xl shadow-sm text-sm font-medium text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 hover:bg-slate-50 dark:hover:bg-slate-700/50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition-colors;
+    }
+
+    .sidebar-link {
+        @apply relative flex items-center gap-3 px-3 py-2.5 rounded-xl text-sm font-medium text-slate-300 hover:bg-white/10 hover:text-white transition-all duration-200;
+    }
+
+    .sidebar-link svg {
+        @apply w-5 h-5 shrink-0 text-slate-400;
+    }
+
+    .sidebar-link:hover svg {
+        @apply text-slate-200;
+    }
+
+    .sidebar-link.is-active {
+        @apply bg-blue-600 text-white shadow-lg shadow-blue-900/40 hover:bg-blue-600 hover:text-white;
+    }
+
+    .sidebar-link.is-active svg {
+        @apply text-white;
+    }
+
+    .sidebar-link.is-active::before {
+        content: '';
+        @apply absolute left-0 top-2 bottom-2 w-1 rounded-r-full bg-white/90;
+    }
+}
+
+@layer utilities {
+    .app-bg {
+        background-color: #f4f7fb;
+        background-image:
+            radial-gradient(1200px 400px at 100% -10%, rgba(59, 130, 246, 0.08), transparent 50%),
+            radial-gradient(800px 300px at -10% 0%, rgba(14, 165, 233, 0.06), transparent 45%);
+    }
+
+    .dark .app-bg {
+        background-color: rgb(15 23 42);
+        background-image:
+            radial-gradient(1200px 400px at 100% -10%, rgba(37, 99, 235, 0.16), transparent 50%),
+            radial-gradient(800px 300px at -10% 0%, rgba(15, 23, 42, 0.4), transparent 45%);
+    }
+}
+
+.sidebar-scroll::-webkit-scrollbar {
+    width: 6px;
+}
+.sidebar-scroll::-webkit-scrollbar-thumb {
+    background: rgba(148, 163, 184, 0.35);
+    border-radius: 999px;
+}
+.sidebar-scroll::-webkit-scrollbar-track {
+    background: transparent;
 }

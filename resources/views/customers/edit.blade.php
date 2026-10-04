@@ -300,10 +300,8 @@
                                 <tr>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">Appliance Type</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">Brand</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">Category</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">Model No</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">Serial No</th>
-                                    <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">Size</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">Date Received</th>
                                     <th class="px-4 py-3 text-left text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">Warranty</th>
                                     <th class="px-4 py-3 text-right text-xs font-medium text-gray-500 dark:text-slate-400 uppercase">Actions</th>
@@ -314,10 +312,8 @@
                                     <tr>
                                         <td class="px-4 py-3 text-sm text-gray-900 dark:text-white">{{ $app->product }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-500 dark:text-slate-400">{{ $app->brand }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-500 dark:text-slate-400">{{ $app->category }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-500 dark:text-slate-400">{{ $app->model_no }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-500 dark:text-slate-400">{{ $app->serial_no }}</td>
-                                        <td class="px-4 py-3 text-sm text-gray-500 dark:text-slate-400">{{ $app->appliance_size ?? '-' }}</td>
                                         <td class="px-4 py-3 text-sm text-gray-500 dark:text-slate-400">{{ $app->date_in ? \Carbon\Carbon::parse($app->date_in)->format('M d, Y') : '' }}</td>
                                         <td class="px-4 py-3 text-sm">
                                             @if($app->warranty_end)
@@ -375,10 +371,6 @@
                                                 <input type="text" name="brand" value="{{ old('brand', $app->brand) }}" required class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                                             </div>
                                             <div>
-                                                <label class="block text-xs font-medium text-gray-700 dark:text-slate-200">Category</label>
-                                                <input type="text" name="category" value="{{ old('category', $app->category) }}" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                                            </div>
-                                            <div>
                                                 <label class="block text-xs font-medium text-gray-700 dark:text-slate-200">Model No.</label>
                                                 <input type="text" name="model_no" value="{{ old('model_no', $app->model_no) }}" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                                             </div>
@@ -387,13 +379,12 @@
                                                 <input type="text" name="serial_no" value="{{ old('serial_no', $app->serial_no) }}" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                                             </div>
                                             <div>
-                                                <label class="block text-xs font-medium text-gray-700 dark:text-slate-200">Appliance Size</label>
-                                                <select name="appliance_size" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                                                    <option value="">Select Size</option>
-                                                    <option value="Small" {{ old('appliance_size', $app->appliance_size) == 'Small' ? 'selected' : '' }}>Small (1mo Warranty)</option>
-                                                    <option value="Medium" {{ old('appliance_size', $app->appliance_size) == 'Medium' ? 'selected' : '' }}>Medium (3mo Warranty)</option>
-                                                    <option value="Large" {{ old('appliance_size', $app->appliance_size) == 'Large' ? 'selected' : '' }}>Large (6mo Warranty)</option>
-                                                </select>
+                                                <label class="block text-xs font-medium text-gray-700 dark:text-slate-200">Dealer (Optional)</label>
+                                                <input type="text" name="dealer" value="{{ old('dealer', $app->dealer) }}" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="e.g. SM Appliance">
+                                            </div>
+                                            <div>
+                                                <label class="block text-xs font-medium text-gray-700 dark:text-slate-200">Other Problem (Optional)</label>
+                                                <input type="text" name="other_problem" value="{{ old('other_problem', $app->problems->whereNotNull('other_problem')->pluck('other_problem')->first()) }}" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm" placeholder="Describe the problem">
                                             </div>
                                             <div>
                                                 <label class="block text-xs font-medium text-gray-700 dark:text-slate-200">Date Received</label>
@@ -433,12 +424,6 @@
                                 @error('brand')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-700 dark:text-slate-200">Category</label>
-                                <input type="text" name="category" placeholder="e.g. Cooling System" value="{{ old('category') }}"
-                                    class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                                @error('category')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
-                            </div>
-                            <div>
                                 <label class="block text-xs font-medium text-gray-700 dark:text-slate-200">Model No.</label>
                                 <input type="text" name="model_no" placeholder="Optional" value="{{ old('model_no') }}"
                                     class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
@@ -451,14 +436,10 @@
                                 @error('serial_no')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
-                                <label class="block text-xs font-medium text-gray-700 dark:text-slate-200">Appliance Size</label>
-                                <select name="appliance_size" class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
-                                    <option value="">Select Size</option>
-                                    <option value="Small" {{ old('appliance_size') == 'Small' ? 'selected' : '' }}>Small (1mo Warranty)</option>
-                                    <option value="Medium" {{ old('appliance_size') == 'Medium' ? 'selected' : '' }}>Medium (3mo Warranty)</option>
-                                    <option value="Large" {{ old('appliance_size') == 'Large' ? 'selected' : '' }}>Large (6mo Warranty)</option>
-                                </select>
-                                @error('appliance_size')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
+                                <label class="block text-xs font-medium text-gray-700 dark:text-slate-200">Dealer (Optional)</label>
+                                <input type="text" name="dealer" placeholder="e.g. SM Appliance" value="{{ old('dealer') }}"
+                                    class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                @error('dealer')<p class="mt-1 text-xs text-red-600">{{ $message }}</p>@enderror
                             </div>
                             <div>
                                 <label class="block text-xs font-medium text-gray-700 dark:text-slate-200">Date Received</label>

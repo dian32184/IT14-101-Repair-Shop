@@ -18,7 +18,7 @@
         </div>
 
         <!-- Search & Filter -->
-        <div class="bg-white dark:bg-slate-800 p-4 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm space-y-4">
+        <div class="bg-white dark:bg-slate-800 p-4 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-card space-y-4">
             <form method="GET" action="{{ route('archive.index') }}" class="flex flex-col sm:flex-row gap-4">
                 <input type="hidden" name="type" value="{{ $type }}">
                 <div class="relative flex-1">
@@ -79,7 +79,7 @@
             </div>
         @else
             <!-- Table -->
-            <div class="bg-white dark:bg-slate-800 rounded-xl border border-gray-100 dark:border-slate-700 shadow-sm overflow-hidden">
+            <div class="bg-white dark:bg-slate-800 rounded-2xl border border-slate-200/80 dark:border-slate-700 shadow-card overflow-hidden">
                 <div class="overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50 dark:bg-slate-700/50">

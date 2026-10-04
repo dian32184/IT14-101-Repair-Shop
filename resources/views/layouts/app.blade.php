@@ -10,22 +10,12 @@
 
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=inter:400,500,600,700&display=swap" rel="stylesheet" />
+    <link href="https://fonts.bunny.net/css?family=plus-jakarta-sans:400,500,600,700&display=swap" rel="stylesheet" />
 
     <!-- Leaflet CSS (Maps) -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
-    <!-- Automatic Resolution Scaling for Small Monitors -->
     <style>
-        @media screen and (max-width: 1440px) {
-            html { zoom: 0.85; }
-        }
-        @media screen and (max-width: 1280px) {
-            html { zoom: 0.80; }
-        }
-        @media screen and (max-width: 1024px) {
-            html { zoom: 1; } /* Reset for tablets/mobile, where Tailwind flex wrap handles it normally */
-        }
         html.text-sm-size { font-size: 14px; }
         html.text-md-size { font-size: 16px; }
         html.text-lg-size { font-size: 18px; }
@@ -33,6 +23,10 @@
 
     <!-- Scripts & Styles (Offline TailWind via Vite) -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+
+    <!-- Turbo.js for SPA-like navigation -->
+    <script src="https://cdn.jsdelivr.net/npm/@hotwired/turbo@7.3.0/dist/turbo.min.js"></script>
+
     <script>
         // Check for dark mode preference to prevent FOUC
         if (localStorage.getItem('color-theme') === 'dark' || (!('color-theme' in localStorage) && window.matchMedia('(prefers-color-scheme: dark)').matches)) {
@@ -50,14 +44,17 @@
             document.documentElement.classList.add('text-' + size + '-size');
             localStorage.setItem('font-size', size);
         }
+        window.changeFontSize = changeFontSize;
     </script>
+
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
     <!-- Leaflet JS (Maps) -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
 
-<body class="bg-[#f8f9fa] dark:bg-gray-900 text-gray-900 dark:text-gray-100 antialiased"
+<body class="app-bg text-gray-900 dark:text-gray-100 antialiased font-sans"
     x-data="{
+        sidebarOpen: false,
         confirmModal: false,
         confirmTitle: 'Confirm Action',
         confirmMessage: '',
@@ -108,16 +105,22 @@
     @open-confirm.window="askConfirm($event.detail.message, $event.detail.action, $event.detail)">
 
     <div class="flex h-screen overflow-hidden">
+        <!-- Mobile sidebar overlay -->
+        <div x-show="sidebarOpen" x-transition.opacity
+            class="fixed inset-0 z-40 bg-slate-900/50 backdrop-blur-[2px] lg:hidden"
+            style="display: none;"
+            @click="sidebarOpen = false"></div>
+
         <!-- Sidebar -->
         @include('layouts.sidebar')
 
         <!-- Main Content Wrapper -->
-        <div class="flex-1 flex flex-col ml-64 transition-all duration-300">
+        <div class="flex-1 flex flex-col ml-0 lg:ml-64 min-w-0 transition-all duration-300">
             <!-- Topbar -->
             @include('layouts.topbar')
 
             <!-- Main Content -->
-            <main class="flex-1 overflow-x-hidden overflow-y-auto bg-[#f8f9fa] dark:bg-gray-900 p-6">
+            <main class="flex-1 overflow-x-hidden overflow-y-auto app-bg p-4 sm:p-6">
                 @if(isset($header))
                     <div class="mb-6">
                         {{ $header }}
@@ -132,31 +135,33 @@
     <!-- Global Flash Notification (Toast) -->
     @if(session()->has('success') || session()->has('error'))
         <div x-data="{ show: true }" x-show="show" x-init="setTimeout(() => show = false, 5000)"
-            class="fixed top-20 right-6 z-50 flex items-center p-4 mb-4 text-gray-500 bg-white rounded-lg shadow-lg dark:text-gray-400 dark:bg-gray-800"
+            class="fixed bottom-6 right-6 z-50 flex items-center gap-3.5 px-4 py-3 text-slate-700 bg-white/95 dark:bg-slate-800/95 backdrop-blur-xl rounded-2xl shadow-2xl border border-slate-200/80 dark:border-slate-700/80 dark:text-slate-200 max-w-md"
             role="alert"
-            x-transition>
+            x-transition:enter="transition ease-out duration-300 transform"
+            x-transition:enter-start="opacity-0 translate-y-4 scale-95"
+            x-transition:enter-end="opacity-100 translate-y-0 scale-100"
+            x-transition:leave="transition ease-in duration-200 transform"
+            x-transition:leave-start="opacity-100 translate-y-0 scale-100"
+            x-transition:leave-end="opacity-0 translate-y-4 scale-95">
             @if(session()->has('success'))
-                <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-green-500 bg-green-100 rounded-lg dark:bg-green-800 dark:text-green-200">
-                    <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 .5a9.5 9.5 0 1 0 9.5 9.5A9.51 9.51 0 0 0 10 .5Zm3.707 8.207-4 4a1 1 0 0 1-1.414 0l-2-2a1 1 0 0 1 1.414-1.414L9 10.586l3.293-3.293a1 1 0 0 1 1.414 1.414Z"/>
+                <div class="inline-flex items-center justify-center shrink-0 w-9 h-9 text-emerald-600 bg-emerald-100 dark:bg-emerald-900/40 dark:text-emerald-300 rounded-xl">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M5 13l4 4L19 7"/>
                     </svg>
-                    <span class="sr-only">Check icon</span>
                 </div>
-                <div class="ms-3 text-sm font-normal">{{ session('success') }}</div>
+                <div class="text-sm font-semibold text-slate-800 dark:text-slate-100">{{ session('success') }}</div>
             @endif
             @if(session()->has('error'))
-                <div class="inline-flex items-center justify-center flex-shrink-0 w-8 h-8 text-red-500 bg-red-100 rounded-lg dark:bg-red-800 dark:text-red-200">
-                    <svg class="w-5 h-5" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="currentColor" viewBox="0 0 20 20">
-                        <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m13 7-6 6m0-6 6 6m6-3a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z"/>
+                <div class="inline-flex items-center justify-center shrink-0 w-9 h-9 text-rose-600 bg-rose-100 dark:bg-rose-900/40 dark:text-rose-300 rounded-xl">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                     </svg>
-                    <span class="sr-only">Error icon</span>
                 </div>
-                <div class="ms-3 text-sm font-normal">{{ session('error') }}</div>
+                <div class="text-sm font-semibold text-slate-800 dark:text-slate-100">{{ session('error') }}</div>
             @endif
-            <button type="button" @click="show = false" class="ms-auto -mx-1.5 -my-1.5 bg-white text-gray-400 hover:text-gray-900 rounded-lg focus:ring-2 focus:ring-gray-300 p-1.5 hover:bg-gray-100 inline-flex items-center justify-center h-8 w-8 dark:text-gray-500 dark:hover:text-white dark:bg-gray-800 dark:hover:bg-gray-700 mx-1" aria-label="Close">
-                <span class="sr-only">Close</span>
-                <svg class="w-3 h-3" aria-hidden="true" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 14 14">
-                    <path stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="m1 1 6 6m0 0 6 6M7 7l6-6M7 7l-6 6"/>
+            <button type="button" @click="show = false" class="ml-auto inline-flex h-7 w-7 items-center justify-center rounded-lg text-slate-400 hover:text-slate-600 hover:bg-slate-100 dark:hover:bg-slate-700 dark:hover:text-white transition-colors" aria-label="Close alert">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
                 </svg>
             </button>
         </div>
@@ -165,17 +170,23 @@
     <!-- Global Confirmation Modal -->
     <div x-show="confirmModal"
         class="fixed inset-0 z-[999] overflow-y-auto" style="display:none;"
-        x-transition:enter="ease-out duration-200" x-transition:enter-start="opacity-0"
-        x-transition:enter-end="opacity-100" x-transition:leave="ease-in duration-150"
+        x-transition:enter="transition ease-out duration-200" x-transition:enter-start="opacity-0"
+        x-transition:enter-end="opacity-100" x-transition:leave="transition ease-in duration-150"
         x-transition:leave-start="opacity-100" x-transition:leave-end="opacity-0"
         @keydown.escape.window="confirmModal = false">
         <div class="flex min-h-screen items-center justify-center px-4">
             <!-- Backdrop -->
-            <div class="fixed inset-0 bg-black/40" @click="confirmModal = false"></div>
+            <div class="fixed inset-0 bg-slate-950/60 backdrop-blur-sm" @click="confirmModal = false"></div>
             <!-- Modal Card -->
-            <div class="relative bg-white dark:bg-slate-800 rounded-2xl shadow-2xl px-6 py-6 max-w-md w-full z-10">
-                <div class="flex items-center gap-4 mb-4">
-                    <div class="h-12 w-12 rounded-full flex items-center justify-center flex-shrink-0"
+            <div class="relative bg-white dark:bg-slate-800 rounded-3xl shadow-2xl border border-slate-200/80 dark:border-slate-700/80 p-6 max-w-md w-full z-10 transform transition-all"
+                x-transition:enter="transition ease-out duration-200"
+                x-transition:enter-start="opacity-0 scale-95 translate-y-2"
+                x-transition:enter-end="opacity-100 scale-100 translate-y-0"
+                x-transition:leave="transition ease-in duration-150"
+                x-transition:leave-start="opacity-100 scale-100 translate-y-0"
+                x-transition:leave-end="opacity-0 scale-95 translate-y-2">
+                <div class="flex items-start gap-4 mb-5">
+                    <div class="h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 ring-4 ring-slate-100 dark:ring-slate-700/40"
                         :class="variantTheme().iconBg">
                         <template x-if="confirmVariant === 'success'">
                             <svg class="h-6 w-6" :class="variantTheme().iconText" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -194,17 +205,17 @@
                         </template>
                     </div>
                     <div>
-                        <h3 class="text-lg font-semibold text-gray-900 dark:text-white" x-text="confirmTitle"></h3>
-                        <p class="text-sm text-gray-500 dark:text-slate-300 mt-0.5" x-text="confirmMessage"></p>
+                        <h3 class="text-lg font-bold text-slate-900 dark:text-white" x-text="confirmTitle"></h3>
+                        <p class="text-sm text-slate-500 dark:text-slate-300 mt-1 leading-relaxed" x-text="confirmMessage"></p>
                     </div>
                 </div>
-                <div class="flex justify-end gap-3 pt-2">
+                <div class="flex justify-end gap-3 pt-3 border-t border-slate-100 dark:border-slate-700/60">
                     <button @click="confirmModal = false"
-                        class="px-4 py-2 text-sm font-medium text-gray-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-gray-300 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700 transition-colors"
+                        class="px-4 py-2.5 text-sm font-semibold text-slate-700 dark:text-slate-200 bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-600 rounded-xl hover:bg-slate-50 dark:hover:bg-slate-700/60 transition-colors"
                         x-text="confirmCancelText">
                     </button>
                     <button @click="doConfirm()"
-                        class="px-4 py-2 text-sm font-medium text-white rounded-lg transition-colors focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
+                        class="px-5 py-2.5 text-sm font-semibold text-white rounded-xl transition-all shadow-sm focus:outline-none focus:ring-2 focus:ring-offset-2 dark:focus:ring-offset-slate-800"
                         :class="variantTheme().confirmBtn"
                         x-text="confirmConfirmText">
                     </button>
