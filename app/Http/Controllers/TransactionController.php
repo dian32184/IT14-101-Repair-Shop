@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 
 class TransactionController extends Controller
 {
@@ -21,9 +20,11 @@ class TransactionController extends Controller
         }
 
         $report = $transaction->report;
+
         if ($report && $report->appliance) {
             $months = 0;
             $size = $report->appliance->appliance_size;
+
             if ($size === 'Small') {
                 $months = 1;
             } elseif ($size === 'Medium') {
@@ -54,11 +55,14 @@ class TransactionController extends Controller
             ->get()
             ->filter(function ($report) {
                 $bill = (float) ($report->details->total_amount ?? 0);
+
                 if ($bill <= 0) {
                     // No bill yet — eligible for first payment setup
                     return $report->transactions->isEmpty();
                 }
+
                 $paid = $report->transactions->sum(fn ($t) => $t->amountPaidThisPayment());
+
                 return $paid < $bill;
             })
             ->values();
@@ -97,7 +101,8 @@ class TransactionController extends Controller
             ->when($receivedBy, function ($q) use ($receivedBy) {
                 if ($receivedBy === 'System') {
                     $q->where(function ($query) {
-                        $query->where('received_by', 'System')->orWhereNull('received_by');
+                        $query->where('received_by', 'System')
+                            ->orWhereNull('received_by');
                     });
                 } elseif (in_array($receivedBy, ['Administrator', 'Secretary', 'Cashier'])) {
                     $userNames = \App\Models\User::where('role', $receivedBy)
@@ -119,12 +124,19 @@ class TransactionController extends Controller
             ->paginate(25)
             ->withQueryString();
 
-        return view('transactions.index', compact('transactions', 'search', 'date', 'status', 'receivedBy'));
+        return view('transactions.index', compact(
+            'transactions',
+            'search',
+            'date',
+            'status',
+            'receivedBy'
+        ));
     }
 
     public function create()
     {
         $this->checkTransactionAccess();
+
         $reports = $this->payableReports();
 
         $reportsPayload = $reports->map(function ($r) {
@@ -169,14 +181,19 @@ class TransactionController extends Controller
             'labor.min' => 'Labor cost must be at least ₱300.',
         ]);
 
-        $report = \App\Models\ServiceReport::with(['details', 'transactions'])->findOrFail($validated['report_id']);
+        $report = \App\Models\ServiceReport::with(['details', 'transactions'])
+            ->findOrFail($validated['report_id']);
 
         if ($report->status !== 'Completed') {
-            return back()->withInput()->with('error', 'Only Completed service reports can be paid.');
+            return back()
+                ->withInput()
+                ->with('error', 'Only Completed service reports can be paid.');
         }
 
         if ($report->transactions->contains(fn ($t) => $t->payment_status === 'Paid')) {
-            return back()->withInput()->with('error', 'This service report is already fully paid.');
+            return back()
+                ->withInput()
+                ->with('error', 'This service report is already fully paid.');
         }
 
         $hasPriorPayments = $report->transactions->isNotEmpty();
@@ -184,9 +201,13 @@ class TransactionController extends Controller
 
         if ($hasPriorPayments) {
             $totalAmount = (float) ($report->details->total_amount ?? 0);
+
             if ($totalAmount <= 0) {
-                return back()->withInput()->with('error', 'Bill total is missing for this report.');
+                return back()
+                    ->withInput()
+                    ->with('error', 'Bill total is missing for this report.');
             }
+
             $labor = (float) ($report->details->labor ?? 0);
             $materials = (float) ($report->details->parts_total_charge ?? 0);
             $delivery = (float) ($report->details->pullout_delivery ?? 0);
@@ -217,9 +238,11 @@ class TransactionController extends Controller
         $remainingBefore = max(0, $totalAmount - $alreadyPaid);
 
         // Amount paid in this payment event
-        $amountPaid = (float) ($validated['amount_paid']
+        $amountPaid = (float) (
+            $validated['amount_paid']
             ?? $validated['partial_payment_amount']
-            ?? 0);
+            ?? 0
+        );
 
         if ($validated['payment_status'] === 'Paid') {
             $amountPaid = $remainingBefore > 0 ? $remainingBefore : $totalAmount;
@@ -228,8 +251,11 @@ class TransactionController extends Controller
         } else {
             // Partial
             if ($amountPaid <= 0) {
-                return back()->withInput()->with('error', 'Enter the amount paid for this partial payment.');
+                return back()
+                    ->withInput()
+                    ->with('error', 'Enter the amount paid for this partial payment.');
             }
+
             if ($amountPaid >= $remainingBefore && $remainingBefore > 0) {
                 $validated['payment_status'] = 'Paid';
                 $amountPaid = $remainingBefore;
@@ -237,12 +263,25 @@ class TransactionController extends Controller
         }
 
         if ($amountPaid > $remainingBefore + 0.0001) {
-            return back()->withInput()->with('error', 'Amount paid cannot exceed the remaining balance of ₱' . number_format($remainingBefore, 2) . '.');
+            return back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'Amount paid cannot exceed the remaining balance of ₱'
+                    . number_format($remainingBefore, 2)
+                    . '.'
+                );
         }
 
         $paymentDate = $validated['payment_date'] ?? null;
-        if (in_array($validated['payment_status'], ['Paid', 'Partial']) && $amountPaid > 0) {
-            $paymentDate = $paymentDate ? \Carbon\Carbon::parse($paymentDate) : now();
+
+        if (
+            in_array($validated['payment_status'], ['Paid', 'Partial'])
+            && $amountPaid > 0
+        ) {
+            $paymentDate = $paymentDate
+                ? \Carbon\Carbon::parse($paymentDate)
+                : now();
         }
 
         $transaction = \App\Models\Transaction::create([
@@ -253,98 +292,58 @@ class TransactionController extends Controller
             'payment_status' => $validated['payment_status'],
             'payment_method' => $validated['payment_method'] ?? null,
             'amount_paid' => $amountPaid,
-            'partial_payment_amount' => $validated['payment_status'] === 'Partial' ? $amountPaid : null,
+            'partial_payment_amount' => $validated['payment_status'] === 'Partial'
+                ? $amountPaid
+                : null,
             'reference_no' => $validated['reference_no'] ?? null,
             'receipt_no' => \App\Models\Transaction::generateReceiptNo(),
             'payment_date' => $paymentDate,
             'payment_due' => $validated['payment_due'] ?? null,
-            'received_by' => $validated['received_by'] ?? (auth()->user() ? auth()->user()->first_name . ' ' . auth()->user()->last_name : 'System'),
+            'received_by' => $validated['received_by']
+                ?? (
+                    auth()->user()
+                        ? auth()->user()->first_name . ' ' . auth()->user()->last_name
+                        : 'System'
+                ),
         ]);
 
-        $remainingAfter = max(0, $totalAmount - ($alreadyPaid + $amountPaid));
-
-        // PayMongo link for remaining balance
-        $paymongoSecret = env('PAYMONGO_SECRET_KEY');
-        if ($validated['payment_status'] !== 'Paid' && $remainingAfter >= 100 && !empty($paymongoSecret)) {
-            try {
-                $response = Http::withBasicAuth($paymongoSecret, '')
-                    ->withHeaders([
-                        'accept' => 'application/json',
-                        'content-type' => 'application/json',
-                    ])
-                    ->post('https://api.paymongo.com/v1/links', [
-                        'data' => [
-                            'attributes' => [
-                                'amount' => intval($remainingAfter * 100),
-                                'description' => 'Repair Service Payment for Report #' . $report->id,
-                                'remarks' => 'Transaction #' . $transaction->id,
-                            ],
-                        ],
-                    ]);
-
-                if ($response->successful()) {
-                    $paymongoData = $response->json()['data'];
-                    $transaction->update([
-                        'paymongo_link_id' => $paymongoData['id'],
-                        'payment_url' => $paymongoData['attributes']['checkout_url'],
-                    ]);
-                }
-            } catch (\Exception $e) {
-                \Log::error('PayMongo Link Creation Failed: ' . $e->getMessage());
-            }
-        }
+        $remainingAfter = max(
+            0,
+            $totalAmount - ($alreadyPaid + $amountPaid)
+        );
 
         $this->applyWarrantyIfPaid($transaction);
 
         return redirect()
             ->route('transactions.show', $transaction)
-            ->with('success', 'Payment recorded successfully.' . ($remainingAfter > 0
-                ? ' Remaining balance: ₱' . number_format($remainingAfter, 2) . '.'
-                : ' Fully paid.'));
-    }
-
-    public function paymongoWebhook(Request $request)
-    {
-        $payload = $request->all();
-
-        if (isset($payload['data']['type']) && $payload['data']['type'] === 'event' && $payload['data']['attributes']['type'] === 'link.payment.paid') {
-            $linkId = $payload['data']['attributes']['data']['attributes']['link_id'] ?? null;
-
-            if ($linkId) {
-                $transaction = \App\Models\Transaction::where('paymongo_link_id', $linkId)->first();
-
-                if ($transaction && $transaction->payment_status !== 'Paid') {
-                    $remaining = max(
-                        0,
-                        (float) $transaction->total_amount - \App\Models\Transaction::totalPaidForReport($transaction->report_id, $transaction->id)
-                    );
-
-                    $transaction->update([
-                        'payment_status' => 'Paid',
-                        'amount_paid' => $remaining > 0 ? $remaining : $transaction->total_amount,
-                        'payment_date' => now(),
-                    ]);
-
-                    $this->applyWarrantyIfPaid($transaction);
-
-                    \Log::info("Webhook Success: Transaction #{$transaction->id} automatically marked as Paid.");
-                }
-            }
-        }
-
-        return response()->json(['status' => 'success']);
+            ->with(
+                'success',
+                'Payment recorded successfully.'
+                . ($remainingAfter > 0
+                    ? ' Remaining balance: ₱' . number_format($remainingAfter, 2) . '.'
+                    : ' Fully paid.')
+            );
     }
 
     public function show(\App\Models\Transaction $transaction)
     {
         $this->checkTransactionAccess();
-        $transaction->load(['report.customer.serviceReports', 'report.details', 'report.transactions', 'report.appliance']);
+
+        $transaction->load([
+            'report.customer.serviceReports',
+            'report.details',
+            'report.transactions',
+            'report.appliance'
+        ]);
 
         $billTotal = (float) ($transaction->total_amount ?? 0);
         $alreadyPaid = \App\Models\Transaction::totalPaidForReport($transaction->report_id);
         $remaining = max(0, $billTotal - $alreadyPaid);
 
-        return view('transactions.show', compact('transaction', 'billTotal', 'alreadyPaid', 'remaining'));
+        return view(
+            'transactions.show',
+            compact('transaction', 'billTotal', 'alreadyPaid', 'remaining')
+        );
     }
 
     public function edit(\App\Models\Transaction $transaction)
@@ -354,20 +353,28 @@ class TransactionController extends Controller
         if ($transaction->isLocked()) {
             return redirect()
                 ->route('transactions.show', $transaction)
-                ->with('error', 'This payment cannot be edited. Add a new payment for any remaining balance.');
+                ->with(
+                    'error',
+                    'This payment cannot be edited. Add a new payment for any remaining balance.'
+                );
         }
 
         return view('transactions.edit', compact('transaction'));
     }
 
-    public function update(Request $request, \App\Models\Transaction $transaction)
-    {
+    public function update(
+        Request $request,
+        \App\Models\Transaction $transaction
+    ) {
         $this->checkTransactionAccess();
 
         if ($transaction->isLocked()) {
             return redirect()
                 ->route('transactions.show', $transaction)
-                ->with('error', 'This payment cannot be edited. Add a new payment for any remaining balance.');
+                ->with(
+                    'error',
+                    'This payment cannot be edited. Add a new payment for any remaining balance.'
+                );
         }
 
         $validated = $request->validate([
@@ -383,12 +390,19 @@ class TransactionController extends Controller
         ]);
 
         $billTotal = (float) ($validated['total_amount'] ?? $transaction->total_amount);
-        $alreadyPaidOthers = \App\Models\Transaction::totalPaidForReport($transaction->report_id, $transaction->id);
+
+        $alreadyPaidOthers = \App\Models\Transaction::totalPaidForReport(
+            $transaction->report_id,
+            $transaction->id
+        );
+
         $remainingBefore = max(0, $billTotal - $alreadyPaidOthers);
 
-        $amountPaid = (float) ($validated['amount_paid']
+        $amountPaid = (float) (
+            $validated['amount_paid']
             ?? $validated['partial_payment_amount']
-            ?? $transaction->amountPaidThisPayment());
+            ?? $transaction->amountPaidThisPayment()
+        );
 
         if (($validated['payment_status'] ?? $transaction->payment_status) === 'Paid') {
             $amountPaid = $remainingBefore;
@@ -403,51 +417,101 @@ class TransactionController extends Controller
         }
 
         if ($amountPaid > $remainingBefore + 0.0001) {
-            return back()->withInput()->with('error', 'Amount paid cannot exceed the remaining balance of ₱' . number_format($remainingBefore, 2) . '.');
+            return back()
+                ->withInput()
+                ->with(
+                    'error',
+                    'Amount paid cannot exceed the remaining balance of ₱'
+                    . number_format($remainingBefore, 2)
+                    . '.'
+                );
         }
 
         $validated['amount_paid'] = $amountPaid;
-        $validated['partial_payment_amount'] = ($validated['payment_status'] ?? '') === 'Partial' ? $amountPaid : null;
+
+        $validated['partial_payment_amount'] =
+            ($validated['payment_status'] ?? '') === 'Partial'
+                ? $amountPaid
+                : null;
+
         $validated['total_amount'] = $billTotal;
 
-        if (($validated['payment_status'] ?? '') === 'Paid' && empty($validated['payment_date']) && !$transaction->payment_date) {
+        if (
+            ($validated['payment_status'] ?? '') === 'Paid'
+            && empty($validated['payment_date'])
+            && !$transaction->payment_date
+        ) {
             $validated['payment_date'] = now();
         }
 
         $transaction->update($validated);
+
         $this->applyWarrantyIfPaid($transaction->fresh());
 
-        return redirect()->route('transactions.index')->with('success', 'Transaction updated successfully.');
+        return redirect()
+            ->route('transactions.index')
+            ->with('success', 'Transaction updated successfully.');
     }
 
     public function destroy(\App\Models\Transaction $transaction)
     {
         $this->checkTransactionAccess();
 
-        if ($transaction->isLocked() && auth()->user()->role !== 'Administrator') {
+        if (
+            $transaction->isLocked()
+            && auth()->user()->role !== 'Administrator'
+        ) {
             return redirect()
                 ->route('transactions.index')
-                ->with('error', 'Fully paid transactions cannot be deleted by cashiers.');
+                ->with(
+                    'error',
+                    'Fully paid transactions cannot be deleted by cashiers.'
+                );
         }
 
-        $transaction->forceFill(['deleted_by' => auth()->id()])->save();
+        $transaction->forceFill([
+            'deleted_by' => auth()->id()
+        ])->save();
+
         $transaction->delete();
 
-        return redirect()->route('transactions.index')->with('success', 'Transaction deleted successfully.');
+        return redirect()
+            ->route('transactions.index')
+            ->with('success', 'Transaction deleted successfully.');
     }
 
     public function receipt(\App\Models\Transaction $transaction)
     {
         $this->checkTransactionAccess();
-        $transaction->load(['report.customer', 'report.appliance', 'report.details', 'report.transactions']);
+
+        $transaction->load([
+            'report.customer',
+            'report.appliance',
+            'report.details',
+            'report.transactions'
+        ]);
 
         $billTotal = (float) $transaction->total_amount;
+
         $paymentHistory = $transaction->report
             ? $transaction->report->transactions->sortBy('created_at')
             : collect([$transaction]);
-        $totalPaid = $paymentHistory->sum(fn ($t) => $t->amountPaidThisPayment());
+
+        $totalPaid = $paymentHistory->sum(
+            fn ($t) => $t->amountPaidThisPayment()
+        );
+
         $remaining = max(0, $billTotal - $totalPaid);
 
-        return view('transactions.receipt', compact('transaction', 'billTotal', 'paymentHistory', 'totalPaid', 'remaining'));
+        return view(
+            'transactions.receipt',
+            compact(
+                'transaction',
+                'billTotal',
+                'paymentHistory',
+                'totalPaid',
+                'remaining'
+            )
+        );
     }
 }

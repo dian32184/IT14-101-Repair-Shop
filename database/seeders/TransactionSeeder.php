@@ -12,7 +12,7 @@ class TransactionSeeder extends Seeder
     public function run(): void
     {
         $serviceReports = ServiceReport::with('details')->get();
-        
+
         if ($serviceReports->isEmpty()) {
             $this->command->warn('No service reports found. Please run ServiceSeeder first.');
             return;
@@ -49,10 +49,10 @@ class TransactionSeeder extends Seeder
             ],
             [
                 'payment_status' => 'Paid',
-                'payment_method' => 'PayMongo',
+                'payment_method' => 'Cash',
                 'payment_date' => now()->subDays(7),
                 'payment_due' => now()->subDays(5),
-                'reference_no' => 'PM-005',
+                'reference_no' => 'CASH-005',
             ],
             [
                 'payment_status' => 'Partial',
@@ -85,10 +85,10 @@ class TransactionSeeder extends Seeder
             ],
             [
                 'payment_status' => 'Partial',
-                'payment_method' => 'PayMongo',
+                'payment_method' => 'Cash',
                 'payment_date' => now()->subDays(2),
                 'payment_due' => now()->addDays(10),
-                'reference_no' => 'PM-010',
+                'reference_no' => 'CASH-010',
                 'partial_payment_amount' => 1500,
             ],
         ];
