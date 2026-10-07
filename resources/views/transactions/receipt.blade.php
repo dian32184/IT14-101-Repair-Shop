@@ -407,8 +407,14 @@
                     <td>Parts / Materials</td>
                     <td class="num">₱{{ number_format((float) $transaction->parts_total, 2) }}</td>
                 </tr>
+                @if($transaction->report && $transaction->report->details && (float) $transaction->report->details->miscellaneous_cost > 0)
+                    <tr>
+                        <td>Miscellaneous</td>
+                        <td class="num">₱{{ number_format((float) $transaction->report->details->miscellaneous_cost, 2) }}</td>
+                    </tr>
+                @endif
                 @php
-                    $delivery = max(0, (float) $billTotal - (float) $transaction->labor_total - (float) $transaction->parts_total);
+                    $delivery = max(0, (float) $billTotal - (float) $transaction->labor_total - (float) $transaction->parts_total - (float) ($transaction->report->details->miscellaneous_cost ?? 0));
                 @endphp
                 @if($delivery > 0)
                     <tr>
