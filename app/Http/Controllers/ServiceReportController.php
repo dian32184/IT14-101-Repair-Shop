@@ -82,15 +82,31 @@ class ServiceReportController extends Controller
                     $qty = (int) $partItem['quantity'];
                     $price = (float) str_replace(['₱', ','], '', $partItem['price']);
 
-                    $partsData[$partItem['id']] = [
-                        'quantity' => $qty,
-                        'price' => $price,
-                    ];
-                    $partsTotalCost += ($qty * $price);
-
-                    // Deduct new stock
+                    // Check stock availability before deducting
                     $actualPart = \App\Models\Part::find($partItem['id']);
                     if ($actualPart) {
+                        if ($actualPart->quantity_stock < $qty) {
+                            // Restore old stock since we're aborting
+                            if (!$isNew) {
+                                foreach ($report->parts as $oldPart) {
+                                    $oldPart->decrement('quantity_stock', $oldPart->pivot->quantity);
+                                }
+                            }
+                            $message = $actualPart->quantity_stock === 0
+                                ? "{$actualPart->name} is currently out of stock."
+                                : "{$actualPart->name} has only {$actualPart->quantity_stock} in stock. You requested {$qty}.";
+                            throw \Illuminate\Validation\ValidationException::withMessages([
+                                'parts' => $message
+                            ]);
+                        }
+
+                        $partsData[$partItem['id']] = [
+                            'quantity' => $qty,
+                            'price' => $price,
+                        ];
+                        $partsTotalCost += ($qty * $price);
+
+                        // Deduct new stock
                         $actualPart->decrement('quantity_stock', $qty);
                     }
                 }
@@ -143,9 +159,10 @@ class ServiceReportController extends Controller
     public function create()
     {
         $this->checkServiceCreationAccess();
-        $customers = \App\Models\Customer::with('appliances.problems.commonProblem')->get();
+        $customers = \App\Models\Customer::all();
         $technicians = $this->getTechniciansWithAvailability();
-        return view('services.create', compact('customers', 'technicians'));
+        $applianceTypes = \App\Models\ApplianceType::with('commonProblems')->get();
+        return view('services.create', compact('customers', 'technicians', 'applianceTypes'));
     }
 
     public function store(Request $request)
@@ -153,31 +170,67 @@ class ServiceReportController extends Controller
         $this->checkServiceCreationAccess();
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
-            'appliance_id' => 'required|exists:appliances,id',
-            'date_in' => 'required|date',
-            'status' => 'required|string',
-            'problem_desc' => 'required|string',
+            'appliance_type_id' => 'required',
+            'other_appliance_type' => 'required_if:appliance_type_id,other|nullable|string',
+            'appliance_brand' => 'nullable|string',
+            'appliance_model' => 'nullable|string',
+            'appliance_serial' => 'nullable|string',
             'dealer' => 'nullable|string',
             'dop' => 'nullable|date',
+            'warranty_end' => 'nullable|date',
+            'date_in' => 'required|date',
+            'status' => 'required|string',
+            'problem_desc' => 'nullable|string',
+            'common_problems' => 'nullable|array',
+            'common_problems.*' => 'exists:common_problems,id',
+            'notes' => 'nullable|string',
             'technicians' => 'nullable|array|max:3',
         ]);
 
         $customer = \App\Models\Customer::find($validated['customer_id']);
 
-        // Check for duplicate service report
-        $exists = \App\Models\ServiceReport::where('customer_id', $customer->id)
-            ->where('appliance_id', $validated['appliance_id'])
-            ->where('date_in', $validated['date_in'])
-            ->where('status', $validated['status'])
-            ->exists();
-
-        if ($exists) {
-            return back()->withInput()->with('error', 'A duplicate service report already exists for this appliance and date.');
+        // Determine appliance type name
+        $applianceTypeName = null;
+        if ($validated['appliance_type_id'] === 'other') {
+            $applianceTypeName = $validated['other_appliance_type'];
+        } elseif ($validated['appliance_type_id']) {
+            $applianceType = \App\Models\ApplianceType::find($validated['appliance_type_id']);
+            $applianceTypeName = $applianceType ? $applianceType->name : null;
         }
 
-        $validated['customer_name'] = trim($customer->first_name . ' ' . $customer->last_name);
+        // Create appliance
+        $appliance = \App\Models\Appliance::create([
+            'customer_id' => $customer->id,
+            'product' => $applianceTypeName,
+            'brand' => $validated['appliance_brand'] ?? null,
+            'model_no' => $validated['appliance_model'] ?? null,
+            'serial_no' => $validated['appliance_serial'] ?? null,
+            'dealer' => $validated['dealer'] ?? null,
+            'date_in' => $validated['dop'] ?? null,
+            'warranty_end' => $validated['warranty_end'] ?? null,
+        ]);
 
-        $report = \App\Models\ServiceReport::create($validated);
+        // Create appliance problems if provided
+        if (isset($validated['common_problems']) && is_array($validated['common_problems'])) {
+            foreach ($validated['common_problems'] as $problemId) {
+                \App\Models\ApplianceProblem::create([
+                    'appliance_id' => $appliance->id,
+                    'common_problem_id' => $problemId,
+                ]);
+            }
+        }
+
+        // Problem description = the notes typed on the create form
+        $problemDesc = trim($validated['notes'] ?? '');
+
+        // Create service report
+        $report = \App\Models\ServiceReport::create([
+            'customer_id' => $customer->id,
+            'appliance_id' => $appliance->id,
+            'date_in' => $validated['date_in'],
+            'status' => $validated['status'],
+            'customer_name' => trim($customer->first_name . ' ' . $customer->last_name),
+        ]);
 
         // Create initial Service Detail
         $techs = isset($validated['technicians']) ? implode(', ', $validated['technicians']) : null;
@@ -189,16 +242,16 @@ class ServiceReportController extends Controller
             'parts_total_charge' => 0,
             'miscellaneous_cost' => 0,
             'total_amount' => 0,
-            'complaint' => $request->problem_desc,
+            'complaint' => $problemDesc,
             'technician' => $techs,
         ]);
 
-        return redirect()->route('services.index')->with('success', 'Service Report created successfully.');
+        return redirect()->route('services.show', $report)->with('success', 'Service Report created successfully.');
     }
 
     public function show(\App\Models\ServiceReport $service)
     {
-        $service->load(['comments.user', 'transactions']);
+        $service->load(['comments.user', 'transactions', 'appliance.problems.commonProblem']);
         $technicians = $this->getTechniciansWithAvailability();
         $techStatusMap = $technicians->mapWithKeys(function (User $tech) {
             $name = strtolower(trim(($tech->first_name ?? '') . ' ' . ($tech->last_name ?? '')));
@@ -270,8 +323,7 @@ class ServiceReportController extends Controller
             $validated['appliance_id'] = $service->appliance_id;
             $validated['date_in'] = $service->date_in;
             $validated['problem_desc'] = $service->details ? $service->details->complaint : '';
-            $validated['dealer'] = $service->dealer;
-            $validated['dop'] = $service->dop;
+            // dealer and dop are stored in appliance, not service_report - technicians cannot edit them
             $validated['technicians'] = $service->details ? explode(', ', $service->details->technician) : [];
         } elseif ($userRole === 'Secretary') {
             $validated['service_types'] = $service->details ? $service->details->service_types : [];
@@ -307,6 +359,27 @@ class ServiceReportController extends Controller
 
         $customer = \App\Models\Customer::find($validated['customer_id']);
         $validated['customer_name'] = trim($customer->first_name . ' ' . $customer->last_name);
+
+        // Save dealer and dop to appliance where they are stored
+        if ($service->appliance) {
+            $applianceData = [];
+            if (isset($validated['dealer'])) {
+                $applianceData['dealer'] = $validated['dealer'];
+                unset($validated['dealer']);
+            }
+            if (isset($validated['dop'])) {
+                $applianceData['date_in'] = $validated['dop'];
+                unset($validated['dop']);
+            }
+            if (!empty($applianceData)) {
+                $service->appliance->update($applianceData);
+            }
+        }
+
+
+        // Remove problem_desc from validated array before updating ServiceReport
+        // (it's stored in service_details.complaint, not service_reports)
+        unset($validated['problem_desc']);
 
         $service->update($validated);
 
@@ -377,7 +450,7 @@ class ServiceReportController extends Controller
 
     public function print(\App\Models\ServiceReport $service)
     {
-        $service->load(['details', 'appliance', 'parts', 'transactions']);
+        $service->load(['details', 'appliance.problems.commonProblem', 'parts', 'transactions']);
         return view('services.print', compact('service'));
     }
 }

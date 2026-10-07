@@ -48,6 +48,121 @@
     </script>
 
     <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+    <!-- Toast Store -->
+    <script>
+        document.addEventListener('alpine:init', () => {
+            Alpine.store('toast', {
+                items: [],
+                maxVisible: 4,
+
+                show(options) {
+                    const id = Date.now() + Math.random();
+                    const toast = {
+                        id,
+                        type: options.type || 'info',
+                        title: options.title || '',
+                        message: options.message || '',
+                        duration: options.duration || (options.type === 'error' ? 7000 : 5000),
+                        remaining: options.duration || (options.type === 'error' ? 7000 : 5000),
+                        paused: false,
+                        timer: null
+                    };
+
+                    this.items.push(toast);
+                    this.startTimer(toast);
+
+                    if (this.items.length > this.maxVisible) {
+                        this.remove(this.items[0].id);
+                    }
+                },
+
+                startTimer(toast) {
+                    if (toast.timer) clearInterval(toast.timer);
+                    
+                    toast.timer = setInterval(() => {
+                        if (!toast.paused) {
+                            toast.remaining -= 100;
+                            if (toast.remaining <= 0) {
+                                this.remove(toast.id);
+                            }
+                        }
+                    }, 100);
+                },
+
+                pause(id) {
+                    const toast = this.items.find(t => t.id === id);
+                    if (toast) {
+                        toast.paused = true;
+                    }
+                },
+
+                resume(id) {
+                    const toast = this.items.find(t => t.id === id);
+                    if (toast) {
+                        toast.paused = false;
+                    }
+                },
+
+                remove(id) {
+                    const toast = this.items.find(t => t.id === id);
+                    if (toast) {
+                        if (toast.timer) clearInterval(toast.timer);
+                        this.items = this.items.filter(t => t.id !== id);
+                    }
+                },
+
+                get icon() {
+                    return {
+                        error: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+                        warning: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z"></path></svg>`,
+                        success: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>`,
+                        info: `<svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"></path></svg>`
+                    };
+                },
+
+                get colors() {
+                    return {
+                        error: {
+                            bg: 'bg-red-50 dark:bg-red-900/20',
+                            border: 'border-red-200 dark:border-red-800',
+                            iconBg: 'bg-red-100 dark:bg-red-900/40',
+                            iconText: 'text-red-600 dark:text-red-400',
+                            title: 'text-red-800 dark:text-red-200',
+                            message: 'text-red-700 dark:text-red-300',
+                            progress: 'bg-red-500'
+                        },
+                        warning: {
+                            bg: 'bg-amber-50 dark:bg-amber-900/20',
+                            border: 'border-amber-200 dark:border-amber-800',
+                            iconBg: 'bg-amber-100 dark:bg-amber-900/40',
+                            iconText: 'text-amber-600 dark:text-amber-400',
+                            title: 'text-amber-800 dark:text-amber-200',
+                            message: 'text-amber-700 dark:text-amber-300',
+                            progress: 'bg-amber-500'
+                        },
+                        success: {
+                            bg: 'bg-green-50 dark:bg-green-900/20',
+                            border: 'border-green-200 dark:border-green-800',
+                            iconBg: 'bg-green-100 dark:bg-green-900/40',
+                            iconText: 'text-green-600 dark:text-green-400',
+                            title: 'text-green-800 dark:text-green-200',
+                            message: 'text-green-700 dark:text-green-300',
+                            progress: 'bg-green-500'
+                        },
+                        info: {
+                            bg: 'bg-blue-50 dark:bg-blue-900/20',
+                            border: 'border-blue-200 dark:border-blue-800',
+                            iconBg: 'bg-blue-100 dark:bg-blue-900/40',
+                            iconText: 'text-blue-600 dark:text-blue-400',
+                            title: 'text-blue-800 dark:text-blue-200',
+                            message: 'text-blue-700 dark:text-blue-300',
+                            progress: 'bg-blue-500'
+                        }
+                    };
+                }
+            });
+        });
+    </script>
     <!-- Leaflet JS (Maps) -->
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 </head>
@@ -103,6 +218,9 @@
         }
     }"
     @open-confirm.window="askConfirm($event.detail.message, $event.detail.action, $event.detail)">
+
+    <!-- Toast Component (at top of body for proper positioning) -->
+    @include('components.toast')
 
     <div class="flex h-screen overflow-hidden">
         <!-- Mobile sidebar overlay -->

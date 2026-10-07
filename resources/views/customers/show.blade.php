@@ -119,10 +119,12 @@
                                             <td class="px-4 py-3 text-sm text-gray-500 dark:text-slate-400">
                                                 @if($app->problems && $app->problems->count() > 0)
                                                     @foreach($app->problems as $problem)
-                                                        @if($problem->common_problem)
-                                                            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded mr-1 mb-1">{{ $problem->common_problem->problem_name }}</span>
+                                                        @if($problem->commonProblem)
+                                                            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded mr-1 mb-1">{{ $problem->commonProblem->problem_name }}</span>
                                                         @elseif($problem->other_problem)
                                                             <span class="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded mr-1 mb-1">Other: {{ $problem->other_problem }}</span>
+                                                        @else
+                                                            <span class="inline-block bg-gray-100 text-gray-800 text-xs px-2 py-0.5 rounded mr-1 mb-1">Unspecified problem</span>
                                                         @endif
                                                     @endforeach
                                                 @else

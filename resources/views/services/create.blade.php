@@ -1,23 +1,76 @@
 <x-app-layout>
+    <script>
+        window.serviceFormData = {
+            customers: @json($customers),
+            techniciansList: @json($technicians),
+            applianceTypes: @json($applianceTypes ?? []),
+            selectedTechs: @json(old('technicians', [])),
+            selectedCustomerId: '{{ old('customer_id') }}',
+            selectedApplianceTypeId: '{{ old('appliance_type_id') }}',
+        };
+        window.saveNewProblem = async function(alpineComponent) {
+            if (!(alpineComponent.newProblemName || '').trim()) {
+                alert('Please enter a problem name');
+                return;
+            }
+            try {
+                const response = await fetch('/common-problems', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        problem_name: alpineComponent.newProblemName.trim(),
+                        appliance_type_id: alpineComponent.selectedApplianceTypeId
+                    })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    const type = alpineComponent.applianceTypes.find(t => t.id == alpineComponent.selectedApplianceTypeId);
+                    if (type) {
+                        type.common_problems.push(data.problem);
+                    }
+
+                    await new Promise(resolve => Alpine.nextTick(resolve));
+
+                    document.querySelectorAll('input[name="common_problems[]"]').forEach(cb => {
+                        if (cb.value == data.problem.id) cb.checked = true;
+                    });
+
+                    alpineComponent.newProblemName = '';
+                    alpineComponent.showAddProblemModal = false;
+                } else {
+                    alert('Failed to save problem: ' + (data.message || 'Unknown error'));
+                }
+            } catch (error) {
+                alert('Error saving problem: ' + error.message);
+            }
+        };
+    </script>
     <div class="w-full mx-auto space-y-6" x-data="{
-        customers: {{ Js::from($customers) }},
-        techniciansList: {{ Js::from($technicians) }},
+        customers: window.serviceFormData.customers,
+        techniciansList: window.serviceFormData.techniciansList,
+        applianceTypes: window.serviceFormData.applianceTypes,
         searchTech: '',
         filterTech: '',
-        selectedTechs: {{ Js::from(old('technicians', [])) }},
-        selectedCustomerId: '{{ old('customer_id') }}',
-        selectedApplianceId: '{{ old('appliance_id') }}',
+        selectedTechs: window.serviceFormData.selectedTechs,
+        selectedCustomerId: window.serviceFormData.selectedCustomerId,
+        selectedApplianceTypeId: window.serviceFormData.selectedApplianceTypeId,
+        otherApplianceTypeName: '',
+        applianceTypeWarning: '',
+        showAddProblemModal: false,
+        newProblemName: '',
         isDirty: false,
         originalValues: {},
         get currentCustomer() {
             return this.customers.find(c => c.id == this.selectedCustomerId) || null;
         },
-        get customerAppliances() {
-            return this.currentCustomer ? this.currentCustomer.appliances : [];
-        },
-        get selectedAppliance() {
-            if (!this.selectedApplianceId) return null;
-            return this.customerAppliances.find(a => a.id == this.selectedApplianceId) || null;
+        get commonProblems() {
+            if (!this.selectedApplianceTypeId || this.selectedApplianceTypeId === 'other') return [];
+            const type = this.applianceTypes.find(t => t.id == this.selectedApplianceTypeId);
+            return type ? type.common_problems : [];
         },
         get filteredTechnicians() {
             let filtered = this.techniciansList;
@@ -62,30 +115,6 @@
                     });
                 }
             });
-            this.$watch('selectedCustomerId', () => {
-                this.selectedApplianceId = '';
-                document.getElementById('dealer').value = '';
-                document.getElementById('dop').value = '';
-            });
-            this.$watch('selectedApplianceId', () => {
-                if (this.selectedAppliance) {
-                    // Auto-fill dealer from appliance
-                    document.getElementById('dealer').value = this.selectedAppliance.dealer || '';
-                    document.getElementById('dop').value = this.selectedAppliance.date_in || '';
-                    // Auto-fill problem description with customer's reported problems
-                    if (this.selectedAppliance.problems && this.selectedAppliance.problems.length > 0) {
-                        let problems = this.selectedAppliance.problems.map(p => {
-                            if (p.common_problem) {
-                                return p.common_problem.problem_name;
-                            } else if (p.other_problem) {
-                                return 'Other: ' + p.other_problem;
-                            }
-                            return '';
-                        }).filter(p => p).join(', ');
-                        document.getElementById('problem_desc').value = problems;
-                    }
-                }
-            });
         },
         checkDirty() {
             const form = this.$el.querySelector('form');
@@ -123,6 +152,7 @@
                 <form action="{{ route('services.store') }}" method="POST" enctype="multipart/form-data" class="space-y-6">
                     @csrf
 
+
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                         <!-- Customer -->
@@ -153,35 +183,77 @@
                             @enderror
                         </div>
 
-                        <!-- Appliance -->
+                        <!-- Appliance Type -->
                         <div>
-                            <label for="appliance_id" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Appliance</label>
-                            <select name="appliance_id" id="appliance_id" x-model="selectedApplianceId" required
-                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                                :disabled="!customerAppliances.length">
-                                <option value="">-- Select Appliance --</option>
-                                <template x-for="app in customerAppliances" :key="app.id">
-                                    <option :value="app.id"
-                                        x-text="app.product + ' - ' + app.brand + (app.model_no ? ' ('+app.model_no+')' : '')">
-                                    </option>
-                                </template>
+                            <label for="appliance_type_id" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Appliance Type</label>
+                            <select name="appliance_type_id" id="appliance_type_id" x-model="selectedApplianceTypeId"
+                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                                <option value="">-- Select Appliance Type --</option>
+                                @foreach($applianceTypes ?? [] as $type)
+                                <option value="{{ $type->id }}">{{ $type->name }}</option>
+                                @endforeach
+                                <option value="other">Other (specify below)</option>
                             </select>
-                            <p x-show="selectedCustomerId && !customerAppliances.length"
-                                class="text-xs text-red-500 mt-1">This customer has no appliances. Please add one in
-                                their profile first.</p>
-                            @error('appliance_id')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @error('appliance_type_id')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Other Appliance Type (conditional) -->
+                        <div x-show="selectedApplianceTypeId === 'other'">
+                            <label for="other_appliance_type" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Specify Appliance Type</label>
+                            <input type="text" name="other_appliance_type" id="other_appliance_type" value="{{ old('other_appliance_type') }}"
+                                x-model="otherApplianceTypeName"
+                                @input="applianceTypeWarning = applianceTypes.find(t => t.name.toLowerCase() === otherApplianceTypeName.toLowerCase()) ? 'This appliance type already exists. Please select it from the dropdown.' : ''"
+                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                placeholder="e.g. Microwave Oven">
+                            <p x-show="applianceTypeWarning" x-text="applianceTypeWarning" class="mt-1 text-sm text-amber-600"></p>
+                            @error('other_appliance_type')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Brand -->
+                        <div>
+                            <label for="appliance_brand" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Brand</label>
+                            <input type="text" name="appliance_brand" id="appliance_brand" value="{{ old('appliance_brand') }}"
+                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                placeholder="e.g. Samsung">
+                            @error('appliance_brand')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Model Number -->
+                        <div>
+                            <label for="appliance_model" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Model Number</label>
+                            <input type="text" name="appliance_model" id="appliance_model" value="{{ old('appliance_model') }}"
+                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                placeholder="e.g. AR12TXFYAWK">
+                            @error('appliance_model')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Serial Number -->
+                        <div>
+                            <label for="appliance_serial" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Serial Number</label>
+                            <input type="text" name="appliance_serial" id="appliance_serial" value="{{ old('appliance_serial') }}"
+                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                placeholder="e.g. 1234567890">
+                            @error('appliance_serial')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
 
                         <!-- Dealer -->
                         <div>
-                            <label for="dealer" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Dealer</label>
+                            <label for="dealer" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Dealer (Optional)</label>
                             <input type="text" name="dealer" id="dealer" value="{{ old('dealer') }}"
                                 class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
                                 placeholder="e.g. SM Appliance">
                             @error('dealer')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
 
@@ -191,7 +263,52 @@
                             <input type="date" name="dop" id="dop" value="{{ old('dop') }}"
                                 class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
                             @error('dop')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Warranty End Date -->
+                        <div>
+                            <label for="warranty_end" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Warranty End Date</label>
+                            <input type="date" name="warranty_end" id="warranty_end" value="{{ old('warranty_end') }}"
+                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm">
+                            @error('warranty_end')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Common Problems -->
+                        <div class="md:col-span-2" x-show="selectedApplianceTypeId && selectedApplianceTypeId !== 'other'">
+                            <div class="flex items-center justify-between mb-2">
+                                <label class="block text-sm font-medium text-gray-700 dark:text-slate-200">Common Problems</label>
+                                <button type="button" @click="showAddProblemModal = true"
+                                    class="text-xs text-blue-600 hover:text-blue-700 dark:text-blue-400 dark:hover:text-blue-300 font-medium">
+                                    + Add New Problem
+                                </button>
+                            </div>
+                            <p class="text-xs text-gray-500 dark:text-slate-400 mb-3">Select all problems that apply to this appliance</p>
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+                                <template x-for="problem in commonProblems" :key="problem.id">
+                                    <label class="flex items-start space-x-3 p-3 border border-gray-200 dark:border-slate-600 rounded-lg hover:bg-gray-50 dark:hover:bg-slate-700/50 cursor-pointer transition-colors">
+                                        <input type="checkbox" name="common_problems[]" :value="problem.id"
+                                            class="mt-0.5 rounded border-gray-300 dark:border-slate-500 text-blue-600 dark:text-blue-400 shadow-sm focus:border-blue-300 focus:ring focus:ring-blue-200 focus:ring-opacity-50">
+                                        <span class="text-sm text-gray-700 dark:text-slate-200" x-text="problem.problem_name"></span>
+                                    </label>
+                                </template>
+                            </div>
+                            @error('common_problems')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+
+                        <!-- Notes -->
+                        <div class="md:col-span-2">
+                            <label for="notes" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Notes</label>
+                            <textarea id="notes" name="notes" rows="2"
+                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                                placeholder="Add any additional notes or customer observations (e.g., customer accidentally wet it)">{{ old('notes') }}</textarea>
+                            @error('notes')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
 
@@ -278,17 +395,7 @@
                             @enderror
                         </div>
 
-                        <!-- Problem Description (from customer's appliance problems) -->
-                        <div class="md:col-span-2">
-                            <label for="problem_desc" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Problem Description (from Customer)<span class="text-red-500">*</span></label>
-                            <textarea id="problem_desc" name="problem_desc" rows="3" required
-                                class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
-                                placeholder="This will be auto-filled from the customer's appliance problems">{{ old('problem_desc') }}</textarea>
-                            <p class="mt-1 text-xs text-gray-500 dark:text-slate-400">This field is auto-populated from the customer's reported problems. You can edit if needed.</p>
-                            @error('problem_desc')
-                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
-                            @enderror
-                        </div>
+                        
 
                         <!-- Status -->
                         <div>
@@ -323,6 +430,32 @@
                         </button>
                     </div>
                 </form>
+            </div>
+        </div>
+
+        <!-- Add New Problem Modal (outside form) -->
+        <div x-show="showAddProblemModal" class="fixed inset-0 z-50 flex items-center justify-center" style="display: none;">
+            <div class="absolute inset-0 bg-black bg-opacity-50" @click="showAddProblemModal = false"></div>
+            <div class="relative bg-white dark:bg-slate-800 rounded-lg shadow-xl max-w-md w-full mx-4 p-6">
+                <h3 class="text-lg font-medium text-gray-900 dark:text-white mb-4">Add New Problem</h3>
+                <div class="space-y-4">
+                    <div>
+                        <label for="new_problem_name" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Problem Name</label>
+                        <input type="text" id="new_problem_name" x-model="newProblemName"
+                            class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm"
+                            placeholder="e.g., Compressor clicking">
+                    </div>
+                </div>
+                <div class="flex justify-end space-x-3 mt-6">
+                    <button type="button" @click="showAddProblemModal = false"
+                        class="px-4 py-2 border border-gray-300 dark:border-slate-500 rounded-lg text-sm font-medium text-gray-700 bg-white dark:bg-slate-800 hover:bg-gray-50 dark:hover:bg-slate-700">
+                        Cancel
+                    </button>
+                    <button type="button" @click="window.saveNewProblem($data)"
+                        class="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">
+                        Save Problem
+                    </button>
+                </div>
             </div>
         </div>
     </div>

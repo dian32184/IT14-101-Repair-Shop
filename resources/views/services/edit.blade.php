@@ -133,21 +133,21 @@
             const name = (this.customName || '').trim();
             const price = parseFloat(this.customPrice);
             if (!name) {
-                alert('Enter a custom service name.');
+                this.$store.toast.show({ type: 'error', title: 'Missing Service Name', message: 'Please enter a custom service name.' });
                 return;
             }
             if (isNaN(price) || price < 0) {
-                alert('Enter a valid price.');
+                this.$store.toast.show({ type: 'error', title: 'Invalid Price', message: 'Please enter a valid price (must be 0 or greater).' });
                 return;
             }
             const existsCatalog = this.uniqueServicePrices.some(sp => sp.service_name.toLowerCase() === name.toLowerCase());
             if (existsCatalog) {
-                alert('That service already exists in the list. Select it from search instead.');
+                this.$store.toast.show({ type: 'warning', title: 'Service Exists', message: 'That service already exists in the catalog. Select it from the search instead.' });
                 return;
             }
             const existsCustom = this.customServices.some(cs => (cs.name || '').toLowerCase() === name.toLowerCase());
             if (existsCustom) {
-                alert('That custom service is already added.');
+                this.$store.toast.show({ type: 'warning', title: 'Duplicate Service', message: 'That custom service is already added to this report.' });
                 return;
             }
             this.customServices.push({ name, price });
@@ -189,7 +189,7 @@
                 if (this.selectedTechs.length < 3) {
                     this.selectedTechs.push(name);
                 } else {
-                    alert('You can only assign a maximum of 3 technicians.');
+                    this.$store.toast.show({ type: 'warning', title: 'Maximum Technicians', message: 'You can only assign a maximum of 3 technicians to a service report.' });
                 }
             } else {
                 this.selectedTechs.splice(idx, 1);
@@ -200,23 +200,72 @@
             let l = (lastName || '').charAt(0);
             return (f + l).toUpperCase() || '?';
         },
+        get partStockInfo() {
+            if (!this.selectedPartId) return { available: 0, inList: 0, remaining: 0, isValid: true };
+            const part = this.parts.find(p => p.id == this.selectedPartId);
+            if (!part) return { available: 0, inList: 0, remaining: 0, isValid: true };
+            const inList = this.selectedParts.reduce((sum, p) => p.id === part.id ? sum + p.quantity : sum, 0);
+            const remaining = part.quantity_stock - inList;
+            const isValid = this.partQuantity <= remaining;
+            return { available: part.quantity_stock, inList, remaining, isValid };
+        },
         addPart() {
             if (!this.selectedPartId || this.partQuantity < 1) return;
             const partIndex = this.parts.findIndex(p => p.id == this.selectedPartId);
             if (partIndex === -1) return;
             const part = this.parts[partIndex];
-            
+
+            const requestedQty = parseInt(this.partQuantity);
+
             // Check if already in list
             const existingIndex = this.selectedParts.findIndex(p => p.id === part.id);
             if (existingIndex !== -1) {
-                this.selectedParts[existingIndex].quantity += parseInt(this.partQuantity);
+                const currentQty = this.selectedParts[existingIndex].quantity;
+                const newTotalQty = currentQty + requestedQty;
+                const remaining = part.quantity_stock - currentQty;
+
+                if (newTotalQty > part.quantity_stock) {
+                    if (remaining === 0) {
+                        this.$store.toast.show({
+                            type: 'error',
+                            title: 'No Stock Available',
+                            message: `${part.name} is out of stock. All ${part.quantity_stock} in stock are already on this report.`
+                        });
+                    } else {
+                        this.$store.toast.show({
+                            type: 'error',
+                            title: 'Not Enough Stock',
+                            message: `${part.name} has only ${part.quantity_stock} in stock, and ${currentQty} is already on this report. You can add up to ${remaining} more.`
+                        });
+                    }
+                    return;
+                }
+
+                this.selectedParts[existingIndex].quantity = newTotalQty;
             } else {
+                if (requestedQty > part.quantity_stock) {
+                    if (part.quantity_stock === 0) {
+                        this.$store.toast.show({
+                            type: 'error',
+                            title: 'Out of Stock',
+                            message: `${part.name} is currently out of stock.`
+                        });
+                    } else {
+                        this.$store.toast.show({
+                            type: 'error',
+                            title: 'Not Enough Stock',
+                            message: `${part.name} has only ${part.quantity_stock} in stock. You requested ${requestedQty}.`
+                        });
+                    }
+                    return;
+                }
+
                 this.selectedParts.push({
                     id: part.id,
                     name: part.name,
                     part_no: part.part_no,
                     price: parseFloat(part.price),
-                    quantity: parseInt(this.partQuantity),
+                    quantity: requestedQty,
                     is_not_working: false
                 });
             }
@@ -276,8 +325,15 @@
                 });
             }
             return this.isDirty;
+        },
+        showValidationErrors() {
+            @if($errors->any())
+                @foreach($errors->all() as $error)
+                    this.$store.toast.show({ type: 'error', title: 'Validation Error', message: {{ Js::from($error) }} });
+                @endforeach
+            @endif
         }
-    }">
+    }" x-init="showValidationErrors()">
         <!-- Header -->
         <div class="flex items-center justify-between">
             <h2 class="text-2xl font-bold text-gray-900 dark:text-white">Edit Service Report #{{ $service->id }}</h2>
@@ -308,7 +364,57 @@
                     $secDisabled = $isSec ? 'disabled' : '';
                     @endphp
 
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    @if($isTech)
+                        <!-- Read-only Intake Details for Technicians -->
+                        <div class="mb-6 bg-blue-50 dark:bg-slate-700/50 rounded-xl border border-blue-100 dark:border-slate-600 p-5">
+                            <h3 class="text-sm font-semibold text-blue-900 dark:text-blue-200 mb-4 flex items-center gap-2">
+                                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 100 20 10 10 0 000-20z"></path>
+                                </svg>
+                                Intake Details (Read-only)
+                            </h3>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                                <div>
+                                    <span class="text-gray-500 dark:text-slate-400 block text-xs uppercase tracking-wide mb-1">Customer</span>
+                                    <span class="text-gray-900 dark:text-white font-medium">{{ $service->customer ? $service->customer->first_name . ' ' . $service->customer->last_name : 'Not provided' }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500 dark:text-slate-400 block text-xs uppercase tracking-wide mb-1">Appliance</span>
+                                    <span class="text-gray-900 dark:text-white font-medium">{{ $service->appliance ? $service->appliance->product . ' - ' . $service->appliance->brand . ($service->appliance->model_no ? ' (' . $service->appliance->model_no . ')' : '') : 'Not provided' }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500 dark:text-slate-400 block text-xs uppercase tracking-wide mb-1">Dealer</span>
+                                    <span class="text-gray-900 dark:text-white">{{ $service->appliance && $service->appliance->dealer ? $service->appliance->dealer : 'Not provided' }}</span>
+                                </div>
+                                <div>
+                                    <span class="text-gray-500 dark:text-slate-400 block text-xs uppercase tracking-wide mb-1">Date of Purchase</span>
+                                    <span class="text-gray-900 dark:text-white">{{ $service->appliance && $service->appliance->date_in ? $service->appliance->date_in->format('M d, Y') : 'Not provided' }}</span>
+                                </div>
+                                <div class="md:col-span-2">
+                                    <span class="text-gray-500 dark:text-slate-400 block text-xs uppercase tracking-wide mb-1">Appliance Reported Problems</span>
+                                    @if($service->appliance && $service->appliance->problems && $service->appliance->problems->count() > 0)
+                                        <div class="flex flex-wrap gap-2 mt-1">
+                                            @foreach($service->appliance->problems as $problem)
+                                                @if($problem->commonProblem)
+                                                    <span class="inline-block bg-blue-100 dark:bg-blue-900/30 text-blue-800 dark:text-blue-200 text-xs px-2 py-0.5 rounded">{{ $problem->commonProblem->problem_name }}</span>
+                                                @elseif($problem->other_problem)
+                                                    <span class="inline-block bg-purple-100 dark:bg-purple-900/30 text-purple-800 dark:text-purple-200 text-xs px-2 py-0.5 rounded">Other: {{ $problem->other_problem }}</span>
+                                                @else
+                                                    <span class="inline-block bg-gray-100 dark:bg-slate-600 text-gray-800 dark:text-slate-200 text-xs px-2 py-0.5 rounded">Unspecified problem</span>
+                                                @endif
+                                            @endforeach
+                                        </div>
+                                    @else
+                                        <span class="text-gray-400 dark:text-slate-500 italic">No reported problems</span>
+                                    @endif
+                                </div>
+                            </div>
+                        </div>
+                    @endif
+
+                    @if(!$isTech)
+                        <!-- Editable Intake Details for Admin/Secretary -->
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
 
                         <!-- Customer -->
                         <div>
@@ -348,7 +454,8 @@
                                 <option value="">-- Select Appliance --</option>
                                 <template x-for="app in customerAppliances" :key="app.id">
                                     <option :value="app.id"
-                                        x-text="app.product + ' - ' + app.brand + (app.model_no ? ' ('+app.model_no+')' : '')">
+                                        x-text="app.product + ' - ' + app.brand + (app.model_no ? ' ('+app.model_no+')' : '')"
+                                        :selected="app.id == selectedApplianceId">
                                     </option>
                                 </template>
                             </select>
@@ -363,7 +470,7 @@
                         <!-- Dealer -->
                         <div>
                             <label for="dealer" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Dealer</label>
-                            <input type="text" name="dealer" id="dealer" value="{{ old('dealer', $service->dealer) }}" {{ $techDisabled }}
+                            <input type="text" name="dealer" id="dealer" value="{{ old('dealer', $service->appliance ? $service->appliance->dealer : '') }}" {{ $techDisabled }}
                                 class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 dark:bg-slate-700 disabled:cursor-not-allowed"
                                 placeholder="e.g. SM Appliance">
                             @error('dealer')
@@ -375,12 +482,14 @@
                         <div>
                             <label for="dop" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Date of Purchase</label>
                             <input type="date" name="dop" id="dop"
-                                value="{{ old('dop', $service->dop ? $service->dop->format('Y-m-d') : '') }}" {{ $techDisabled }}
+                                value="{{ old('dop', $service->appliance && $service->appliance->date_in ? $service->appliance->date_in->format('Y-m-d') : '') }}" {{ $techDisabled }}
                                 class="mt-1 block w-full rounded-lg border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 dark:bg-slate-700 disabled:cursor-not-allowed">
                             @error('dop')
                             <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
+                        </div>
+                        @endif
 
                         @php
                         $savedTechs = $service->details ? explode(', ', $service->details->technician) : [];
@@ -642,15 +751,17 @@
                             @enderror
                         </div>
 
-                        @if($service->appliance && $service->appliance->problems && $service->appliance->problems->count() > 0)
+                        @if(!$isTech && $service->appliance && $service->appliance->problems && $service->appliance->problems->count() > 0)
                             <div class="md:col-span-2">
                                 <label class="block text-sm font-medium text-gray-700 dark:text-slate-200">Appliance Reported Problems</label>
                                 <div class="mt-1 p-3 bg-gray-50 dark:bg-slate-700/50 rounded-lg border border-gray-100 dark:border-slate-700">
                                     @foreach($service->appliance->problems as $problem)
-                                        @if($problem->common_problem)
-                                            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded mr-1 mb-1">{{ $problem->common_problem->problem_name }}</span>
+                                        @if($problem->commonProblem)
+                                            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded mr-1 mb-1">{{ $problem->commonProblem->problem_name }}</span>
                                         @elseif($problem->other_problem)
                                             <span class="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded mr-1 mb-1">Other: {{ $problem->other_problem }}</span>
+                                        @else
+                                            <span class="inline-block bg-gray-100 text-gray-800 text-xs px-2 py-0.5 rounded mr-1 mb-1">Unspecified problem</span>
                                         @endif
                                     @endforeach
                                 </div>
@@ -750,7 +861,7 @@
                                     @change="
                                         let selected = Array.from($event.target.files);
                                         if (selected.length > 5) {
-                                            alert('Maximum of 5 files allowed.');
+                                            $store.toast.show({ type: 'error', title: 'Too Many Files', message: 'Maximum of 5 files allowed. Please select fewer files.' });
                                             $event.target.value = '';
                                             files = [];
                                         } else {
@@ -791,15 +902,22 @@
                                     <select x-model="selectedPartId" {{ $secDisabled }} class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 dark:bg-slate-700 disabled:cursor-not-allowed">
                                         <option value="">-- Choose Part --</option>
                                         <template x-for="part in parts" :key="part.id">
-                                            <option :value="part.id" x-text="part.part_no + ' - ' + part.name + ' (₱' + part.price + ') - Stock: ' + part.quantity_stock"></option>
+                                            <option :value="part.id" x-text="part.part_no + ' - ' + part.name + ' (₱' + part.price + ') - Stock: ' + part.quantity_stock + (partStockInfo.inList > 0 && part.id == selectedPartId ? ', ' + partStockInfo.inList + ' on this report' : '')"></option>
                                         </template>
                                     </select>
                                 </div>
-                                <div class="w-24">
-                                    <label class="block text-xs font-medium text-gray-700 dark:text-slate-200">Qty</label>
-                                    <input type="number" x-model="partQuantity" min="1" {{ $secDisabled }} class="mt-1 block w-full rounded-md border-gray-300 dark:border-slate-500 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm disabled:bg-gray-100 dark:bg-slate-700 disabled:cursor-not-allowed">
-                                </div>
-                                <button type="button" @click="addPart" {{ $secDisabled }} class="mb-px px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 disabled:opacity-50 disabled:cursor-not-allowed">
+                                <div class="w-40">
+    <div class="flex items-center justify-between gap-2 h-4">
+        <label class="block text-xs font-medium text-gray-700 dark:text-slate-200">Qty</label>
+        <span x-show="!partStockInfo.isValid && selectedPartId"
+              class="text-xs text-red-500 dark:text-red-400 whitespace-nowrap"
+              x-text="partStockInfo.remaining <= 0 ? 'Out of stock' : 'Max ' + partStockInfo.remaining + ' available'"></span>
+    </div>
+    <input type="number" x-model="partQuantity" min="1" {{ $secDisabled }}
+        :class="!partStockInfo.isValid && selectedPartId ? 'border-red-500 focus:border-red-500 focus:ring-red-500' : 'border-gray-300 dark:border-slate-500 focus:border-blue-500 focus:ring-blue-500'"
+        class="mt-1 block w-full rounded-md shadow-sm sm:text-sm disabled:bg-gray-100 dark:bg-slate-700 disabled:cursor-not-allowed">
+</div>
+                                <button type="button" @click="addPart" {{ $secDisabled }} :disabled="!partStockInfo.isValid && selectedPartId" class="mb-px px-4 py-2 bg-gray-800 text-white text-sm font-medium rounded-md hover:bg-gray-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-gray-900 disabled:opacity-50 disabled:cursor-not-allowed">
                                     Add Part
                                 </button>
                             </div>

@@ -56,6 +56,11 @@ class Appliance extends Model
         'dealer',
     ];
 
+    protected $casts = [
+        'date_in' => 'date',
+        'warranty_end' => 'date',
+    ];
+
     public function customer()
     {
         return $this->belongsTo(Customer::class);

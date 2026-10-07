@@ -13,12 +13,17 @@
             --line: #d4d4d4;
             --accent: #0b3d91;
             --paper: #fffef8;
+            --receipt-width: 80mm;
         }
 
         * { box-sizing: border-box; }
 
-        body {
+        html, body {
             margin: 0;
+            padding: 0;
+        }
+
+        body {
             background: #e8e6e1;
             color: var(--ink);
             font-family: 'Source Sans 3', 'Segoe UI', sans-serif;
@@ -27,7 +32,7 @@
         }
 
         .toolbar {
-            max-width: 420px;
+            width: var(--receipt-width);
             margin: 16px auto;
             display: flex;
             gap: 8px;
@@ -51,40 +56,42 @@
             background: #4b5563;
         }
 
+        /* Same width on screen and in print so the preview matches the paper */
         .receipt {
-            width: 380px;
+            width: var(--receipt-width);
             margin: 0 auto 40px;
             background: var(--paper);
             box-shadow: 0 12px 40px rgba(0,0,0,.12);
-            padding: 28px 24px 32px;
+            padding: 8mm 6mm 8mm;
             position: relative;
+            overflow: hidden;
         }
 
         .receipt::before {
             content: '';
             position: absolute;
-            inset: 8px;
+            inset: 4px;
             border: 1px solid var(--line);
             pointer-events: none;
         }
 
         .brand {
             text-align: center;
-            padding-bottom: 14px;
+            padding-bottom: 12px;
             border-bottom: 2px solid var(--ink);
-            margin-bottom: 14px;
+            margin-bottom: 12px;
         }
 
         .brand .logo-wrap {
             display: flex;
             justify-content: center;
             align-items: center;
-            margin: 0 0 10px;
+            margin: 0 0 8px;
         }
 
         .brand .logo {
             display: block;
-            width: 140px;
+            width: 120px;
             max-width: 70%;
             height: auto;
             margin: 0 auto;
@@ -103,7 +110,7 @@
 
         .brand .tagline {
             margin: 6px 0 0;
-            font-size: 11px;
+            font-size: 10px;
             letter-spacing: .18em;
             text-transform: uppercase;
             color: var(--muted);
@@ -111,7 +118,7 @@
 
         .brand .address {
             margin: 8px 0 0;
-            font-size: 12px;
+            font-size: 11px;
             color: var(--muted);
             line-height: 1.45;
         }
@@ -122,21 +129,23 @@
             font-weight: 700;
             letter-spacing: .2em;
             text-transform: uppercase;
-            margin: 12px 0 16px;
+            margin: 10px 0 14px;
         }
 
         .meta {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 8px 12px;
+            gap: 8px 10px;
             font-size: 12px;
-            margin-bottom: 14px;
+            margin-bottom: 12px;
         }
+
+        .meta > div { min-width: 0; }
 
         .meta .label {
             display: block;
             color: var(--muted);
-            font-size: 10px;
+            font-size: 9px;
             text-transform: uppercase;
             letter-spacing: .06em;
         }
@@ -144,11 +153,12 @@
         .meta .value {
             font-family: 'IBM Plex Mono', monospace;
             font-weight: 500;
-            font-size: 12px;
+            font-size: 11px;
+            word-break: break-all;
         }
 
         .section-head {
-            margin: 16px 0 8px;
+            margin: 14px 0 6px;
             font-size: 11px;
             font-weight: 700;
             letter-spacing: .14em;
@@ -160,13 +170,13 @@
         .info-line {
             display: flex;
             justify-content: space-between;
-            gap: 12px;
-            font-size: 13px;
+            gap: 10px;
+            font-size: 12px;
             padding: 3px 0;
         }
 
-        .info-line span:first-child { color: var(--muted); }
-        .info-line span:last-child { font-weight: 600; text-align: right; }
+        .info-line span:first-child { color: var(--muted); flex-shrink: 0; }
+        .info-line span:last-child { font-weight: 600; text-align: right; word-break: break-word; }
 
         table.lines {
             width: 100%;
@@ -205,12 +215,12 @@
         .totals .row {
             display: flex;
             justify-content: space-between;
-            font-size: 13px;
+            font-size: 12px;
             padding: 3px 0;
         }
 
         .totals .row.grand {
-            font-size: 16px;
+            font-size: 15px;
             font-weight: 700;
             margin-top: 6px;
             padding-top: 8px;
@@ -238,29 +248,48 @@
         .status-unpaid { color: #b91c1c; background: #fee2e2; }
 
         .footer {
-            margin-top: 22px;
+            margin-top: 18px;
             text-align: center;
             border-top: 1px dashed var(--line);
-            padding-top: 14px;
+            padding-top: 12px;
+            break-inside: avoid;
+            page-break-inside: avoid;
+        }
+
+        /* Barcode is auto-shrunk by script so it never overflows the receipt */
+        .barcode-wrap {
+            width: 100%;
+            overflow: hidden;
         }
 
         .barcode {
+            display: block;
+            white-space: nowrap;
             font-family: 'Libre Barcode 39', cursive;
-            font-size: 42px;
-            line-height: 1;
-            margin: 4px 0;
+            font-size: 36px;
+            line-height: 1.1;
+            margin: 4px 0 0;
+            text-align: center;
+        }
+
+        .barcode-text {
+            font-family: 'IBM Plex Mono', monospace;
+            font-size: 10px;
+            letter-spacing: .08em;
+            color: var(--muted);
+            margin: 2px 0 6px;
         }
 
         .footer p {
             margin: 4px 0;
-            font-size: 11px;
+            font-size: 10.5px;
             color: var(--muted);
         }
 
         .thanks {
-            font-size: 13px;
+            font-size: 12px;
             font-weight: 700;
-            color: var(--ink);
+            color: var(--ink) !important;
             margin-top: 8px !important;
         }
 
@@ -269,24 +298,34 @@
             color: var(--muted);
             font-size: 10px;
             letter-spacing: .3em;
-            margin: 10px 0 0;
+            margin: 10px 0 0 !important;
+            overflow: hidden;
+            white-space: nowrap;
+        }
+
+        /* Thermal-style roll: paper is exactly the receipt width, height fits the content */
+        @page {
+            size: 80mm auto;
+            margin: 0;
         }
 
         @media print {
-            body { background: #fff; }
+            html, body {
+                width: 80mm;
+                background: #fff;
+            }
             .toolbar { display: none !important; }
             .receipt {
                 width: 80mm;
                 margin: 0;
                 box-shadow: none;
-                padding: 8mm 6mm;
+                padding: 6mm 5mm 10mm;
             }
             .receipt::before { display: none; }
-            @page { margin: 0; size: auto; }
         }
     </style>
 </head>
-<body onload="window.print()">
+<body>
     <div class="toolbar no-print">
         <button type="button" onclick="window.print()">Print Receipt</button>
         <a href="{{ route('transactions.show', $transaction) }}" class="secondary">Back</a>
@@ -458,13 +497,45 @@
             </table>
         @endif
 
+        @php
+            $barcodeValue = preg_replace('/[^A-Za-z0-9]/', '', $transaction->receipt_no ?? ('TXN'.$transaction->id));
+        @endphp
         <footer class="footer">
-            <div class="barcode">*{{ preg_replace('/[^A-Za-z0-9]/', '', $transaction->receipt_no ?? ('TXN'.$transaction->id)) }}*</div>
+            <div class="barcode-wrap">
+                <div class="barcode" id="barcode">*{{ $barcodeValue }}*</div>
+            </div>
+            <div class="barcode-text">{{ $barcodeValue }}</div>
             <p class="thanks">Thank you for trusting 101 Repair Service</p>
             <p>This receipt is your official proof of payment.</p>
             <p>Please keep for warranty validation.</p>
-            <p class="cut">✂ · · · · · · · · · · · · · ·</p>
+            <p class="cut">✂ - - - - - - - - - - - - - -</p>
         </footer>
     </article>
+
+    <script>
+        // Shrink the barcode font until it fits inside the receipt width
+        function fitBarcode() {
+            var el = document.getElementById('barcode');
+            if (!el) return;
+            var max = el.parentElement.clientWidth;
+            var size = 36;
+            el.style.fontSize = size + 'px';
+            while (el.scrollWidth > max && size > 10) {
+                size -= 1;
+                el.style.fontSize = size + 'px';
+            }
+        }
+
+        window.addEventListener('beforeprint', fitBarcode);
+
+        window.addEventListener('load', function () {
+            // Wait for web fonts (incl. the barcode font) before measuring and printing
+            var ready = (document.fonts && document.fonts.ready) ? document.fonts.ready : Promise.resolve();
+            ready.then(function () {
+                fitBarcode();
+                setTimeout(function () { window.print(); }, 150);
+            });
+        });
+    </script>
 </body>
 </html>

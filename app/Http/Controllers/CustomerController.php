@@ -46,8 +46,7 @@ class CustomerController extends Controller
     public function create()
     {
         $this->checkCustomerAccess();
-        $applianceTypes = \App\Models\ApplianceType::with('commonProblems')->get();
-        return view('customers.create', compact('applianceTypes'));
+        return view('customers.create');
     }
 
     public function store(Request $request)
@@ -69,24 +68,13 @@ class CustomerController extends Controller
             'address' => 'nullable|string',
             'phone_no' => 'required|numeric|digits_between:7,15',
             'profile_picture' => 'nullable|image|mimes:jpeg,png,jpg,gif|max:2048',
-            'appliance_type_id' => 'nullable|exists:appliance_types,id',
-            'appliance_product' => 'nullable|string',
-            'appliance_brand' => 'nullable|string',
-            'appliance_model' => 'nullable|string',
-            'appliance_serial' => 'nullable|string',
-            'appliance_dealer' => 'nullable|string|max:255',
-            'appliance_purchase_date' => 'nullable|date',
-            'appliance_warranty' => 'nullable|date',
-            'common_problems' => 'nullable|array',
-            'common_problems.*' => 'exists:common_problems,id',
-            'other_problem' => 'nullable|string',
         ], [
             'phone_no.required' => 'The phone number is required.',
             'phone_no.numeric' => 'The phone number must contain only numbers.',
             'phone_no.digits_between' => 'The phone number must be between 7 and 15 digits.',
         ]);
 
-        $data = $request->except('profile_picture', 'appliance_type_id', 'appliance_product', 'appliance_brand', 'appliance_model', 'appliance_serial', 'appliance_dealer', 'appliance_purchase_date', 'appliance_warranty', 'common_problems', 'other_problem');
+        $data = $request->except('profile_picture');
 
         if ($request->hasFile('profile_picture')) {
             $path = $request->file('profile_picture')->store('customer-profiles', 'public');
@@ -94,40 +82,6 @@ class CustomerController extends Controller
         }
 
         $customer = \App\Models\Customer::create($data);
-
-        // Create appliance if data is provided
-        if ($request->filled('appliance_product') || $request->filled('appliance_brand') || $request->filled('appliance_type_id')) {
-            $applianceType = \App\Models\ApplianceType::find($request->appliance_type_id);
-            $appliance = \App\Models\Appliance::create([
-                'customer_id' => $customer->id,
-                'category' => $applianceType ? $applianceType->name : null,
-                'product' => $request->appliance_product,
-                'brand' => $request->appliance_brand,
-                'model_no' => $request->appliance_model,
-                'serial_no' => $request->appliance_serial,
-                'dealer' => $request->appliance_dealer,
-                'date_in' => $request->appliance_purchase_date,
-                'warranty_end' => $request->appliance_warranty,
-            ]);
-
-            // Create appliance problems
-            if ($request->filled('common_problems')) {
-                foreach ($request->common_problems as $problemId) {
-                    \App\Models\ApplianceProblem::create([
-                        'appliance_id' => $appliance->id,
-                        'common_problem_id' => $problemId,
-                    ]);
-                }
-            }
-
-            // Add other problem if provided
-            if ($request->filled('other_problem')) {
-                \App\Models\ApplianceProblem::create([
-                    'appliance_id' => $appliance->id,
-                    'other_problem' => $request->other_problem,
-                ]);
-            }
-        }
 
         return redirect()->route('customers.index')->with('success', 'Customer created successfully.');
     }

@@ -128,6 +128,7 @@
     <!-- Popover Menu -->
     <div
         x-show="userMenuOpen"
+        x-cloak
         @click.away="userMenuOpen = false"
 
         x-transition:enter="transition ease-out duration-150"
@@ -227,8 +228,7 @@
 
             <form
                 method="POST"
-                action="{{ route('logout') }}"
-                onsubmit="localStorage.removeItem('color-theme'); document.documentElement.classList.remove('dark');">
+                action="{{ route('logout') }}">
 
                 @csrf
 

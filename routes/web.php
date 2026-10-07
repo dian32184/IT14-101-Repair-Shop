@@ -11,6 +11,8 @@ use App\Http\Controllers\ArchiveController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ApplianceController;
+use App\Http\Controllers\CommonProblemController;
+use App\Http\Controllers\ApplianceTypeController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -31,6 +33,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('services', ServiceReportController::class);
     Route::post('/services/{service}/comments', [ServiceReportController::class , 'storeComment'])->name('services.comments.store');
     Route::get('/services/{service}/print', [ServiceReportController::class , 'print'])->name('services.print');
+
+    Route::post('/common-problems', [CommonProblemController::class , 'store']);
+    Route::post('/appliance-types', [ApplianceTypeController::class , 'store']);
 
     Route::resource('inventory', InventoryController::class);
     Route::get('/transactions/{transaction}/receipt', [TransactionController::class, 'receipt'])->name('transactions.receipt');

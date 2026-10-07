@@ -54,23 +54,75 @@
                         <h3 class="text-lg font-medium text-gray-900 dark:text-white">Appliance Details</h3>
                     </div>
                     <div class="p-6 grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        @php
+                            $appliance = $service->appliance;
+                        @endphp
                         <div>
-                            <dt class="text-sm font-medium text-gray-500 dark:text-slate-400">Appliance</dt>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-slate-400">Appliance Type</dt>
                             <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-                                {{ $service->appliance ? $service->appliance->product . ' (' . $service->appliance->brand . ')' : 'N/A' }}
+                                {{ $appliance?->product ?: 'N/A' }}
                             </dd>
                         </div>
                         <div>
-                            <dt class="text-sm font-medium text-gray-500 dark:text-slate-400">Model No. / Dealer</dt>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-slate-400">Brand</dt>
                             <dd class="mt-1 text-sm text-gray-900 dark:text-white">
-                                {{ $service->appliance && $service->appliance->model_no ? $service->appliance->model_no : 'N/A' }}
-                                {{ $service->dealer ? ' / ' . $service->dealer : '' }}
+                                {{ $appliance?->brand ?: 'N/A' }}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-slate-400">Model No.</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                                {{ $appliance?->model_no ?: 'N/A' }}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-slate-400">Serial No.</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                                {{ $appliance?->serial_no ?: 'N/A' }}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-slate-400">Dealer</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                                {{ $appliance?->dealer ?: 'N/A' }}
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-slate-400">Date of Purchase</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                                @if($appliance?->date_in)
+                                    @php
+                                        $date = $appliance->date_in;
+                                        if (is_string($date)) {
+                                            $date = \Carbon\Carbon::parse($date);
+                                        }
+                                    @endphp
+                                    {{ $date->format('M d, Y') }}
+                                @else
+                                    N/A
+                                @endif
+                            </dd>
+                        </div>
+                        <div>
+                            <dt class="text-sm font-medium text-gray-500 dark:text-slate-400">Warranty End</dt>
+                            <dd class="mt-1 text-sm text-gray-900 dark:text-white">
+                                @if($appliance?->warranty_end)
+                                    @php
+                                        $warranty = $appliance->warranty_end;
+                                        if (is_string($warranty)) {
+                                            $warranty = \Carbon\Carbon::parse($warranty);
+                                        }
+                                    @endphp
+                                    {{ $warranty->format('M d, Y') }}
+                                @else
+                                    N/A
+                                @endif
                             </dd>
                         </div>
                         <div class="sm:col-span-2">
                             <dt class="text-sm font-medium text-gray-500 dark:text-slate-400">Problem Description</dt>
                             <dd class="mt-1 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-slate-700/50 p-3 rounded-lg border border-gray-100 dark:border-slate-700">
-                                {{ $service->problem_desc }}
+                                {{ $service->details->complaint ?? '' ?: 'N/A' }}
                             </dd>
                         </div>
                         @if($service->appliance && $service->appliance->problems && $service->appliance->problems->count() > 0)
@@ -78,8 +130,8 @@
                                 <dt class="text-sm font-medium text-gray-500 dark:text-slate-400">Appliance Reported Problems</dt>
                                 <dd class="mt-1 text-sm text-gray-900 dark:text-white bg-gray-50 dark:bg-slate-700/50 p-3 rounded-lg border border-gray-100 dark:border-slate-700">
                                     @foreach($service->appliance->problems as $problem)
-                                        @if($problem->common_problem)
-                                            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded mr-1 mb-1">{{ $problem->common_problem->problem_name }}</span>
+                                        @if($problem->commonProblem)
+                                            <span class="inline-block bg-blue-100 text-blue-800 text-xs px-2 py-0.5 rounded mr-1 mb-1">{{ $problem->commonProblem->problem_name }}</span>
                                         @elseif($problem->other_problem)
                                             <span class="inline-block bg-purple-100 text-purple-800 text-xs px-2 py-0.5 rounded mr-1 mb-1">Other: {{ $problem->other_problem }}</span>
                                         @endif

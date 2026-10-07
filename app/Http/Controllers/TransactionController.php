@@ -263,37 +263,6 @@ class TransactionController extends Controller
 
         $remainingAfter = max(0, $totalAmount - ($alreadyPaid + $amountPaid));
 
-        // PayMongo link for remaining balance
-        $paymongoSecret = env('PAYMONGO_SECRET_KEY');
-        if ($validated['payment_status'] !== 'Paid' && $remainingAfter >= 100 && !empty($paymongoSecret)) {
-            try {
-                $response = Http::withBasicAuth($paymongoSecret, '')
-                    ->withHeaders([
-                        'accept' => 'application/json',
-                        'content-type' => 'application/json',
-                    ])
-                    ->post('https://api.paymongo.com/v1/links', [
-                        'data' => [
-                            'attributes' => [
-                                'amount' => intval($remainingAfter * 100),
-                                'description' => 'Repair Service Payment for Report #' . $report->id,
-                                'remarks' => 'Transaction #' . $transaction->id,
-                            ],
-                        ],
-                    ]);
-
-                if ($response->successful()) {
-                    $paymongoData = $response->json()['data'];
-                    $transaction->update([
-                        'paymongo_link_id' => $paymongoData['id'],
-                        'payment_url' => $paymongoData['attributes']['checkout_url'],
-                    ]);
-                }
-            } catch (\Exception $e) {
-                \Log::error('PayMongo Link Creation Failed: ' . $e->getMessage());
-            }
-        }
-
         $this->applyWarrantyIfPaid($transaction);
 
         return redirect()
