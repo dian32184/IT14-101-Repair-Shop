@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 
 class TransactionController extends Controller
 {
@@ -270,38 +269,6 @@ class TransactionController extends Controller
             ->with('success', 'Payment recorded successfully.' . ($remainingAfter > 0
                 ? ' Remaining balance: ₱' . number_format($remainingAfter, 2) . '.'
                 : ' Fully paid.'));
-    }
-
-    public function paymongoWebhook(Request $request)
-    {
-        $payload = $request->all();
-
-        if (isset($payload['data']['type']) && $payload['data']['type'] === 'event' && $payload['data']['attributes']['type'] === 'link.payment.paid') {
-            $linkId = $payload['data']['attributes']['data']['attributes']['link_id'] ?? null;
-
-            if ($linkId) {
-                $transaction = \App\Models\Transaction::where('paymongo_link_id', $linkId)->first();
-
-                if ($transaction && $transaction->payment_status !== 'Paid') {
-                    $remaining = max(
-                        0,
-                        (float) $transaction->total_amount - \App\Models\Transaction::totalPaidForReport($transaction->report_id, $transaction->id)
-                    );
-
-                    $transaction->update([
-                        'payment_status' => 'Paid',
-                        'amount_paid' => $remaining > 0 ? $remaining : $transaction->total_amount,
-                        'payment_date' => now(),
-                    ]);
-
-                    $this->applyWarrantyIfPaid($transaction);
-
-                    \Log::info("Webhook Success: Transaction #{$transaction->id} automatically marked as Paid.");
-                }
-            }
-        }
-
-        return response()->json(['status' => 'success']);
     }
 
     public function show(\App\Models\Transaction $transaction)

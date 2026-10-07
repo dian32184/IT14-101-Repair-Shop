@@ -25,8 +25,6 @@ use Illuminate\Database\Eloquent\SoftDeletes;
  * @property \Illuminate\Support\Carbon|null $deleted_at
  * @property int|null $deleted_by
  * @property string|null $deletion_reason
- * @property string|null $paymongo_link_id
- * @property string|null $payment_url
  * @property-read \App\Models\ServiceReport|null $report
  */
 class Transaction extends Model
@@ -47,8 +45,6 @@ class Transaction extends Model
         'payment_date',
         'payment_due',
         'received_by',
-        'paymongo_link_id',
-        'payment_url',
     ];
 
     protected $casts = [

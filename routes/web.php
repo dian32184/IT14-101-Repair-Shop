@@ -19,9 +19,6 @@ Route::get('/', function () {
     return redirect()->route('login');
 });
 
-// PayMongo Webhook (Must be outside 'auth' middleware so PayMongo can access it securely)
-Route::post('/webhooks/paymongo', [TransactionController::class , 'paymongoWebhook'])->name('webhooks.paymongo');
-
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class , 'index'])->name('dashboard');
 

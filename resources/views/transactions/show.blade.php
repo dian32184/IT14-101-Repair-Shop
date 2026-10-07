@@ -178,28 +178,6 @@
                         </div>
                     @endif
                 @endif
-
-                @if($transaction->payment_url && $transaction->payment_status !== 'Paid' && $remaining > 0)
-                    <hr class="border-gray-100 dark:border-slate-700 mb-8">
-                    <div class="max-w-xl mx-auto text-center" x-data="{ copied: false }">
-                        <h3 class="text-lg font-medium text-gray-900 dark:text-white">PayMongo Payment Link</h3>
-                        <p class="mt-2 text-sm text-gray-500 dark:text-slate-400 mb-4">
-                            Send this link for the remaining balance.
-                        </p>
-                        <div class="flex shadow-sm rounded-md">
-                            <input type="text" id="payment_url" readonly value="{{ $transaction->payment_url }}"
-                                class="block w-full rounded-l-md border-gray-300 bg-gray-50 dark:bg-slate-700/50 text-gray-500 sm:text-sm">
-                            <button type="button" @click="navigator.clipboard.writeText(document.getElementById('payment_url').value); copied = true; setTimeout(() => copied = false, 2000);"
-                                class="relative -ml-px inline-flex items-center border border-gray-300 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-100 w-32 justify-center">
-                                <span x-text="copied ? 'Copied!' : 'Copy Link'"></span>
-                            </button>
-                            <a href="{{ $transaction->payment_url }}" target="_blank"
-                                class="relative -ml-px inline-flex items-center rounded-r-md border border-gray-300 bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700">
-                                Open
-                            </a>
-                        </div>
-                    </div>
-                @endif
             </div>
         </div>
     </div>
