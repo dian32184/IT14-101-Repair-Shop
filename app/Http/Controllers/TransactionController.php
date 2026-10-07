@@ -135,6 +135,7 @@ class TransactionController extends Controller
                 'id' => $r->id,
                 'labor' => $r->details ? (float) $r->details->labor : 0,
                 'materials' => $r->details ? (float) $r->details->parts_total_charge : 0,
+                'miscellaneous' => $r->details ? (float) $r->details->miscellaneous_cost : 0,
                 'delivery' => $r->details ? (float) $r->details->pullout_delivery : 0,
                 'bill_total' => $bill,
                 'already_paid' => $paid,
@@ -155,6 +156,7 @@ class TransactionController extends Controller
             'report_id' => 'required|exists:service_reports,id',
             'labor' => 'nullable|numeric|min:300',
             'materials' => 'nullable|numeric|min:0',
+            'miscellaneous' => 'nullable|numeric|min:0',
             'delivery' => 'nullable|numeric|min:0',
             'payment_status' => 'required|string|in:Paid,Unpaid,Partial',
             'payment_method' => 'nullable|string',
@@ -188,6 +190,7 @@ class TransactionController extends Controller
             }
             $labor = (float) ($report->details->labor ?? 0);
             $materials = (float) ($report->details->parts_total_charge ?? 0);
+            $miscellaneous = (float) ($report->details->miscellaneous_cost ?? 0);
             $delivery = (float) ($report->details->pullout_delivery ?? 0);
         } else {
             $request->validate([
@@ -199,14 +202,16 @@ class TransactionController extends Controller
 
             $labor = (float) $validated['labor'];
             $materials = (float) $validated['materials'];
+            $miscellaneous = (float) ($validated['miscellaneous'] ?? 0);
             $delivery = (float) ($validated['delivery'] ?? 0);
-            $totalAmount = $labor + $materials + $delivery;
+            $totalAmount = $labor + $materials + $miscellaneous + $delivery;
 
             \App\Models\ServiceDetail::updateOrCreate(
                 ['report_id' => $report->id],
                 [
                     'labor' => $labor,
                     'parts_total_charge' => $materials,
+                    'miscellaneous_cost' => $miscellaneous,
                     'pullout_delivery' => $delivery,
                     'total_amount' => $totalAmount,
                 ]

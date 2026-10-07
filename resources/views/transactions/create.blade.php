@@ -32,6 +32,7 @@
             selectedReportId: '{{ old('report_id', request('report_id')) }}',
             labor: {{ old('labor', 0) }},
             materials: {{ old('materials', 0) }},
+            miscellaneous: {{ old('miscellaneous', 0) }},
             delivery: {{ old('delivery', 0) }},
             payment_status: '{{ old('payment_status', 'Paid') }}',
             amount_paid: '{{ old('amount_paid', old('partial_payment_amount', '')) }}',
@@ -40,7 +41,7 @@
             remaining: 0,
             has_payments: false,
             calculateTotal() {
-                this.total_amount = ((parseFloat(this.labor) || 0) + (parseFloat(this.materials) || 0) + (parseFloat(this.delivery) || 0)).toFixed(2);
+                this.total_amount = ((parseFloat(this.labor) || 0) + (parseFloat(this.materials) || 0) + (parseFloat(this.miscellaneous) || 0) + (parseFloat(this.delivery) || 0)).toFixed(2);
                 if (!this.has_payments) {
                     this.remaining = parseFloat(this.total_amount) || 0;
                 }
@@ -50,6 +51,7 @@
                 if (report) {
                     this.labor = report.labor;
                     this.materials = report.materials;
+                    this.miscellaneous = report.miscellaneous || 0;
                     this.delivery = report.delivery;
                     this.has_payments = !!report.has_payments;
                     this.already_paid = report.already_paid || 0;
@@ -66,6 +68,7 @@
                 } else {
                     this.labor = 0;
                     this.materials = 0;
+                    this.miscellaneous = 0;
                     this.delivery = 0;
                     this.has_payments = false;
                     this.already_paid = 0;
@@ -77,6 +80,7 @@
                 this.$watch('selectedReportId', (value) => this.loadReport(value));
                 this.$watch('labor', () => { if (!this.has_payments) this.calculateTotal(); });
                 this.$watch('materials', () => { if (!this.has_payments) this.calculateTotal(); });
+                this.$watch('miscellaneous', () => { if (!this.has_payments) this.calculateTotal(); });
                 this.$watch('delivery', () => { if (!this.has_payments) this.calculateTotal(); });
                 this.$watch('payment_status', (status) => {
                     if (status === 'Paid') {
@@ -140,7 +144,7 @@
                         </div>
                     </div>
 
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6" x-show="!has_payments">
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-6" x-show="!has_payments">
                         <div>
                             <label for="labor" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Labor Cost</label>
                             <div class="mt-1 relative rounded-md shadow-sm">
@@ -168,6 +172,20 @@
                                     placeholder="0.00">
                             </div>
                             @error('materials')
+                                <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                            @enderror
+                        </div>
+                        <div>
+                            <label for="miscellaneous" class="block text-sm font-medium text-gray-700 dark:text-slate-200">Miscellaneous</label>
+                            <div class="mt-1 relative rounded-md shadow-sm">
+                                <div class="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
+                                    <span class="text-gray-500 dark:text-slate-400 sm:text-sm">₱</span>
+                                </div>
+                                <input type="number" name="miscellaneous" id="miscellaneous" step="0.01" x-model="miscellaneous"
+                                    class="focus:ring-blue-500 focus:border-blue-500 block w-full pl-7 sm:text-sm border-gray-300 dark:border-slate-500 rounded-lg"
+                                    placeholder="0.00">
+                            </div>
+                            @error('miscellaneous')
                                 <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                             @enderror
                         </div>
