@@ -47,8 +47,7 @@ RUN npm install && npm run build
 # Copy environment file if it doesn't exist
 RUN if [ ! -f .env ]; then cp .env.example .env; fi
 
-# Generate application key
-RUN php artisan key:generate --ansi
+# APP_KEY will be set as environment variable on Render
 
 # Create storage directories and set permissions
 RUN mkdir -p storage/framework/cache \
@@ -62,8 +61,12 @@ RUN mkdir -p storage/framework/cache \
 # Create symbolic link for public storage
 RUN php artisan storage:link
 
+# Copy startup script
+COPY docker-start.sh /usr/local/bin/docker-start.sh
+RUN sed -i 's/\r$//' /usr/local/bin/docker-start.sh && chmod +x /usr/local/bin/docker-start.sh
+
 # Expose port 80
 EXPOSE 80
 
-# Set the default command to run Apache
-CMD ["apache2-foreground"]
+# Set the default command to run startup script
+CMD ["docker-start.sh"]
