@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: 101-repair-shop
+    env: docker
+    region: singapore
+    plan: free
+    dockerfilePath: ./Dockerfile
+    dockerContext: .
+    healthCheckPath: /up
+    envVars:
+      - key: APP_ENV
+        value: production
+      - key: APP_DEBUG
+        value: false
+      - key: APP_URL
+        value: https://101-repair-shop.onrender.com
+      - key: DB_CONNECTION
+        value: pgsql
+      - key: CACHE_DRIVER
+        value: database
+      - key: SESSION_DRIVER
+        value: database
+      - key: QUEUE_CONNECTION
+        value: database
+      - key: FILESYSTEM_DISK
+        value: public
+
+databases:
+  - name: repair-shop-db
+    databaseName: repair_shop
+    user: repair_shop_user
+    region: singapore
+    plan: free
