@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Receipt {{ $transaction->receipt_no ?? '#'.$transaction->id }}</title>
+
+@if(empty($forPdf))
+    {{-- ===================== BROWSER / PRINT STYLES (unchanged look) ===================== --}}
     <style>
         @import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Libre+Barcode+39&family=Source+Sans+3:wght@400;600;700&display=swap');
 
@@ -231,6 +234,9 @@
         .totals .row.balance { color: #b91c1c; font-weight: 700; }
         .totals .row.clear { color: #166534; font-weight: 700; }
 
+        .extra { margin-top: 10px; font-size: 12px; }
+        .sub { font-size: 10px; color: var(--muted); }
+
         .status-pill {
             display: inline-block;
             margin-top: 10px;
@@ -324,17 +330,140 @@
             .receipt::before { display: none; }
         }
     </style>
+@else
+    {{-- ===================== PDF STYLES (plain CSS: no variables, flex, grid or web fonts) ===================== --}}
+    <style>
+        @page { margin: 0; }
+
+        body {
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+            color: #1a1a1a;
+            font-family: 'DejaVu Sans', sans-serif;
+            font-size: 9px;
+        }
+
+        .receipt {
+            padding: 12px 12px 16px 12px;
+        }
+
+        .brand {
+            text-align: center;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #1a1a1a;
+            margin-bottom: 8px;
+        }
+
+        .brand .logo-wrap { text-align: center; margin-bottom: 6px; }
+        .brand .logo { width: 90px; height: auto; }
+
+        .brand .tagline {
+            margin: 4px 0 0;
+            font-size: 8px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            color: #5c5c5c;
+        }
+
+        .brand .address {
+            margin: 6px 0 0;
+            font-size: 8px;
+            color: #5c5c5c;
+            line-height: 1.4;
+        }
+
+        .doc-title {
+            text-align: center;
+            font-size: 11px;
+            font-weight: bold;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin: 8px 0 10px;
+        }
+
+        .meta { margin-bottom: 8px; }
+        .meta > div { display: inline-block; width: 47%; vertical-align: top; margin-bottom: 6px; }
+        .meta .label { display: block; color: #5c5c5c; font-size: 7px; text-transform: uppercase; }
+        .meta .value { font-size: 9px; font-weight: bold; }
+
+        .section-head {
+            margin: 10px 0 5px;
+            font-size: 9px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border-bottom: 1px dashed #999999;
+            padding-bottom: 3px;
+        }
+
+        .info-line { display: table; width: 100%; padding: 2px 0; font-size: 9px; }
+        .info-line span { display: table-cell; width: 40%; color: #5c5c5c; }
+        .info-line span + span { width: 60%; color: #1a1a1a; font-weight: bold; text-align: right; }
+
+        table.lines { width: 100%; border-collapse: collapse; font-size: 9px; margin-top: 3px; }
+        table.lines th {
+            text-align: left;
+            font-size: 8px;
+            text-transform: uppercase;
+            color: #5c5c5c;
+            border-bottom: 1px solid #1a1a1a;
+            padding: 3px 0;
+        }
+        table.lines th.num, table.lines td.num { text-align: right; }
+        table.lines td { padding: 4px 0; border-bottom: 1px dotted #999999; vertical-align: top; }
+
+        .totals { margin-top: 10px; border-top: 2px solid #1a1a1a; padding-top: 6px; }
+        .totals .row { display: table; width: 100%; font-size: 9px; padding: 2px 0; }
+        .totals .row span { display: table-cell; width: 60%; }
+        .totals .row span + span { width: 40%; text-align: right; }
+        .totals .row.grand {
+            font-size: 12px;
+            font-weight: bold;
+            margin-top: 4px;
+            padding-top: 6px;
+            border-top: 1px dashed #999999;
+        }
+        .totals .row.paid { color: #166534; }
+        .totals .row.balance { color: #b91c1c; font-weight: bold; }
+        .totals .row.clear { color: #166534; font-weight: bold; }
+
+        .extra { margin-top: 8px; font-size: 9px; }
+        .sub { font-size: 8px; color: #5c5c5c; }
+
+        .status-pill {
+            display: inline-block;
+            margin-top: 8px;
+            padding: 3px 8px;
+            font-size: 9px;
+            font-weight: bold;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            border: 1px solid #1a1a1a;
+        }
+        .status-paid { color: #166534; background: #dcfce7; border-color: #166534; }
+        .status-partial { color: #a16207; background: #fef9c3; border-color: #a16207; }
+        .status-unpaid { color: #b91c1c; background: #fee2e2; border-color: #b91c1c; }
+
+        .footer { margin-top: 14px; text-align: center; border-top: 1px dashed #999999; padding-top: 10px; }
+        .barcode-text { font-size: 9px; letter-spacing: 1px; color: #5c5c5c; margin: 2px 0 6px; }
+        .footer p { margin: 3px 0; font-size: 8px; color: #5c5c5c; }
+        .thanks { font-size: 9px; font-weight: bold; color: #1a1a1a !important; margin-top: 6px !important; }
+    </style>
+@endif
 </head>
 <body>
+@if(empty($forPdf))
     <div class="toolbar no-print">
         <button type="button" onclick="window.print()">Print Receipt</button>
         <a href="{{ route('transactions.show', $transaction) }}" class="secondary">Back</a>
     </div>
+@endif
 
     <article class="receipt">
         <header class="brand">
             <div class="logo-wrap">
-                <img src="{{ asset('img/repairservicelogoblue.png') }}"
+                <img src="{{ !empty($forPdf) ? public_path('img/repairservicelogoblue.png') : asset('img/repairservicelogoblue.png') }}"
                     alt="101 Repair Service"
                     class="logo">
             </div>
@@ -451,7 +580,7 @@
             @endif
         </div>
 
-        <div style="margin-top: 10px; font-size: 12px;">
+        <div class="extra">
             <div class="info-line">
                 <span>Method</span>
                 <span>{{ $transaction->payment_method ?? 'N/A' }}</span>
@@ -492,7 +621,7 @@
                         <tr>
                             <td>
                                 {{ $pay->receipt_no ?? '#'.$pay->id }}
-                                <div style="font-size:10px;color:var(--muted);">
+                                <div class="sub">
                                     {{ ($pay->payment_date ?? $pay->created_at)->format('M d, Y') }} · {{ $pay->payment_status }}
                                 </div>
                             </td>
@@ -507,17 +636,22 @@
             $barcodeValue = preg_replace('/[^A-Za-z0-9]/', '', $transaction->receipt_no ?? ('TXN'.$transaction->id));
         @endphp
         <footer class="footer">
+        @if(empty($forPdf))
             <div class="barcode-wrap">
                 <div class="barcode" id="barcode">*{{ $barcodeValue }}*</div>
             </div>
+        @endif
             <div class="barcode-text">{{ $barcodeValue }}</div>
             <p class="thanks">Thank you for trusting 101 Repair Service</p>
             <p>This receipt is your official proof of payment.</p>
             <p>Please keep for warranty validation.</p>
+        @if(empty($forPdf))
             <p class="cut">✂ - - - - - - - - - - - - - -</p>
+        @endif
         </footer>
     </article>
 
+@if(empty($forPdf))
     <script>
         // Shrink the barcode font until it fits inside the receipt width
         function fitBarcode() {
@@ -543,5 +677,6 @@
             });
         });
     </script>
+@endif
 </body>
 </html>

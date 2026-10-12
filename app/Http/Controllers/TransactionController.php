@@ -2,6 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Receipt;
+use App\Models\Transaction;
+use Barryvdh\DomPDF\Facade\Pdf;
+use Cloudinary\Cloudinary;
+use Illuminate\Support\Str;
 use Illuminate\Http\Request;
 
 class TransactionController extends Controller
@@ -378,17 +383,53 @@ class TransactionController extends Controller
     }
 
     public function receipt(\App\Models\Transaction $transaction)
-    {
-        $this->checkTransactionAccess();
-        $transaction->load(['report.customer', 'report.appliance', 'report.details', 'report.transactions']);
+{
+    $this->checkTransactionAccess();
+    $transaction->load(['report.customer', 'report.appliance', 'report.details', 'report.transactions']);
 
-        $billTotal = (float) $transaction->total_amount;
-        $paymentHistory = $transaction->report
-            ? $transaction->report->transactions->sortBy('created_at')
-            : collect([$transaction]);
-        $totalPaid = $paymentHistory->sum(fn ($t) => $t->amountPaidThisPayment());
-        $remaining = max(0, $billTotal - $totalPaid);
+    $billTotal = (float) $transaction->total_amount;
+    $paymentHistory = $transaction->report
+        ? $transaction->report->transactions->sortBy('created_at')
+        : collect([$transaction]);
+    $totalPaid = $paymentHistory->sum(fn ($t) => $t->amountPaidThisPayment());
+    $remaining = max(0, $billTotal - $totalPaid);
 
-        return view('transactions.receipt', compact('transaction', 'billTotal', 'paymentHistory', 'totalPaid', 'remaining'));
+    $data = compact('transaction', 'billTotal', 'paymentHistory', 'totalPaid', 'remaining');
+
+    $this->uploadReceiptToCloudinary($transaction, $data);
+
+    return view('transactions.receipt', $data);
+}
+
+private function uploadReceiptToCloudinary(Transaction $transaction, array $data): void
+{
+    $tmp = null;
+
+    try {
+        $html = view('transactions.receipt', $data + ['forPdf' => true])->render();
+        $pdf = Pdf::loadHTML($html)->setPaper([0, 0, 226.77, 700]);
+        
+        $tmp = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'receipt_' . $transaction->id . '.pdf';
+        file_put_contents($tmp, $pdf->output());
+
+        $cloudinary = new Cloudinary(env('CLOUDINARY_URL'));
+        $result = $cloudinary->uploadApi()->upload($tmp, [
+            'folder' => 'receipts',
+            'public_id' => Str::slug($transaction->receipt_no ?: 'transaction-' . $transaction->id),
+            'overwrite' => true,
+        ]);
+
+        Receipt::updateOrCreate(
+            ['transaction_id' => $transaction->id],
+            ['receipt_url' => $result['secure_url']]
+        );
+    } catch (\Throwable $e) {
+        // Don't block printing if the upload fails
+        report($e);
+    } finally {
+        if ($tmp && file_exists($tmp)) {
+            @unlink($tmp);
+        }
     }
+}
 }

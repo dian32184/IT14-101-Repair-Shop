@@ -15,6 +15,7 @@ use App\Http\Controllers\CommonProblemController;
 use App\Http\Controllers\ApplianceTypeController;
 use Illuminate\Support\Facades\Route;
 
+
 Route::get('/', function () {
     return redirect()->route('login');
 });
