@@ -9,6 +9,8 @@ RUN apt-get update && apt-get install -y \
     git \
     curl \
     libpng-dev \
+    libjpeg62-turbo-dev \
+    libfreetype6-dev \
     libonig-dev \
     libxml2-dev \
     zip \
@@ -17,8 +19,9 @@ RUN apt-get update && apt-get install -y \
     libpq-dev \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Install PHP extensions
-RUN docker-php-ext-install pdo pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd intl
+# Install PHP extensions with GD configuration
+RUN docker-php-ext-configure gd --with-freetype --with-jpeg && \
+    docker-php-ext-install pdo pdo_mysql pdo_pgsql mbstring exif pcntl bcmath gd intl
 
 # Install Composer
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
